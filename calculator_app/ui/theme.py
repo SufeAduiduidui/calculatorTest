@@ -1,0 +1,48 @@
+#ui配色
+def palette_for(name):
+    if name == "iOS Dark":
+        return {
+            "bg": "#000000",
+            "device": "#2B2B2E",
+            "surface": "#1C1C1E",
+            "text": "#FFFFFF",
+            "subtext": "#A0A0A5",
+            "border": "#3A3A3C",
+            "digit": "#F1F2F3",
+            "digit_hover": "#E7E8EA",
+            "digit_text": "#222222",
+            "digit_border": "#C8CCD2",
+            "func": "#8E939A",
+            "func_hover": "#7E838A",
+            "func_border": "#777C84",
+            "blue": "#0A84FF",
+            "orange": "#E67E36",
+            "orange_soft": "#E89A64",
+            "accent": "#0A84FF",
+            "accent_text": "#FFFFFF",
+            "grid": "#333333",
+            "axis": "#AAAAAA",
+        }
+    else:
+        return {
+            "bg": "#F5F5F5",
+            "device": "#C8CDD2",
+            "surface": "#FFFFFF",
+            "text": "#000000",
+            "subtext": "#6C6C70",
+            "border": "#C6C6C8",
+            "digit": "#FFFFFF",
+            "digit_hover": "#F2F2F7",
+            "digit_text": "#222222",
+            "digit_border": "#D6D7DA",
+            "func": "#9AA1A8",
+            "func_hover": "#8F969E",
+            "func_border": "#8A9299",
+            "blue": "#3F8CFF",
+            "orange": "#E67E36",
+            "orange_soft": "#E8A26B",
+            "accent": "#007AFF",
+            "accent_text": "#FFFFFF",
+            "grid": "#DDDDDD",
+            "axis": "#666666",
+        }
