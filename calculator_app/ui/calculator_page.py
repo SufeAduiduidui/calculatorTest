@@ -1,6 +1,8 @@
 import tkinter as tk
 import customtkinter as ctk
 
+from .pet_widget import PetWidget#桌宠test
+
 from ..core.safe_eval import SafeEvaluator
 
 class CalculatorPage(ctk.CTkFrame):
@@ -24,10 +26,20 @@ class CalculatorPage(ctk.CTkFrame):
 
         brand = ctk.CTkFrame(self.device, fg_color="transparent")
         brand.pack(side="top", fill="x", padx=20, pady=(18, 6))
-        self.lbl_brand = ctk.CTkLabel(brand, text="CASIO", font=("SF Pro Display", 18, "bold"))
-        self.lbl_sub = ctk.CTkLabel(brand, text="CLASSWIZ", font=("SF Pro Text", 12))
+
+        left = ctk.CTkFrame(brand, fg_color="transparent")
+        left.pack(side="left", fill="both", expand=True)
+
+        right = ctk.CTkFrame(brand, fg_color="transparent")
+        right.pack(side="right")
+
+        self.lbl_brand = ctk.CTkLabel(left, text="CASIO", font=("SF Pro Display", 18, "bold"))
+        self.lbl_sub = ctk.CTkLabel(left, text="CLASSWIZ", font=("SF Pro Text", 12))
         self.lbl_brand.pack()
         self.lbl_sub.pack()
+
+        self.pet = PetWidget(right, image_path="assets/pet.jpg", size=(64, 64))
+        self.pet.pack(padx=6, pady=0)
 
         screen = ctk.CTkFrame(self.device, corner_radius=12)
         screen.pack(fill="x", padx=20, pady=(6, 12))
