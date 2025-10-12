@@ -93,48 +93,62 @@ class CalculatorApp(ctk.CTk):
             self.plot_frame.pack(fill="both", expand=True, padx=8, pady=8)
             self.page_seg.set("Plot")
 
-    # ---- Theme Application ---------------------------------------------------
     def apply_theme(self, name):
-        if name == "iOS Dark":
-            ctk.set_appearance_mode("Dark")
-        elif name == "iOS Light":
-            ctk.set_appearance_mode("Light")
-        else:
-            ctk.set_appearance_mode("System")
-
         self.theme_var.set(name)
-        pal = palette_for(name)
-        self._palette = pal
 
-        self.configure(fg_color=pal.get("bg", "#F5F5F5"))
-        try:
-            self.body.configure(fg_color=pal.get("bg", "#F5F5F5"))
-            self.calc_frame.configure(fg_color=pal.get("bg", "#F5F5F5"))
-            self.conv_frame.configure(fg_color=pal.get("bg", "#F5F5F5"))
-            self.plot_frame.configure(fg_color=pal.get("bg", "#F5F5F5"))
-        except Exception:
-            pass
-
-        for seg in (self.page_seg, self.theme_seg):
+        def broadcast(pal, eff):
+            self._palette = pal
+            self.configure(fg_color=pal.get("bg", "#F5F5F5"))
             try:
-                seg.configure(
-                    fg_color=pal.get("surface", "#FFFFFF"),
-                    selected_color=pal.get("accent", "#007AFF"),
-                    selected_text_color=pal.get("accent_text", "#FFFFFF"),
-                    unselected_color=pal.get("surface", "#FFFFFF"),
-                )
+                self.body.configure(fg_color=pal.get("bg", "#F5F5F5"))
+                self.calc_frame.configure(fg_color=pal.get("bg", "#F5F5F5"))
+                self.conv_frame.configure(fg_color=pal.get("bg", "#F5F5F5"))
+                self.plot_frame.configure(fg_color=pal.get("bg", "#F5F5F5"))
+            except Exception:
+                pass
+            for seg in (self.page_seg, self.theme_seg):
+                try:
+                    seg.configure(
+                        fg_color=pal.get("surface", "#FFFFFF"),
+                        selected_color=pal.get("accent", "#007AFF"),
+                        selected_text_color=pal.get("accent_text", "#FFFFFF"),
+                        unselected_color=pal.get("surface", "#FFFFFF"),
+                    )
+                except Exception:
+                    pass
+            try:
+                self.calc_page.apply_theme(pal, eff)
+            except Exception:
+                pass
+            try:
+                self.plot_page.apply_theme(pal, eff)
+            except Exception:
+                pass
+            try:
+                self.conv_page.apply_theme(pal, eff)
             except Exception:
                 pass
 
-        try:
-            self.calc_page.apply_theme(pal, name)
-        except Exception:
-            pass
-        try:
-            self.plot_page.apply_theme(pal, name)
-        except Exception:
-            pass
-        try:
-            self.conv_page.apply_theme(pal, name)
-        except Exception:
-            pass
+        if name == "iOS Dark":
+            ctk.set_appearance_mode("Dark")
+            eff = "iOS Dark"
+            pal = palette_for(eff)
+            broadcast(pal, eff)
+            return
+        if name == "iOS Light":
+            ctk.set_appearance_mode("Light")
+            eff = "iOS Light"
+            pal = palette_for(eff)
+            broadcast(pal, eff)
+            return
+
+        ctk.set_appearance_mode("System")
+
+        def apply_from_system():
+            mode = ctk.get_appearance_mode()
+            eff = "iOS Dark" if str(mode).lower() == "dark" else "iOS Light"
+            pal = palette_for(eff)
+            broadcast(pal, eff)
+
+        self.after(0, apply_from_system)
+        apply_from_system()

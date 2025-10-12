@@ -2,6 +2,9 @@ import math
 import tkinter as tk
 import customtkinter as ctk
 
+
+from .sound_player import play as play_sound
+
 from ..core.safe_eval import SafeEvaluator
 
 class PlotPage(ctk.CTkFrame):

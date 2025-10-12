@@ -2,8 +2,10 @@ import tkinter as tk
 import customtkinter as ctk
 
 from .pet_widget import PetWidget#桌宠test
-
 from ..core.safe_eval import SafeEvaluator
+
+from .sound_player import play as play_sound
+
 
 class CalculatorPage(ctk.CTkFrame):
     def __init__(self, master, evaluator: SafeEvaluator, palette, theme_name):
@@ -231,6 +233,9 @@ class CalculatorPage(ctk.CTkFrame):
             self.result_var.set(f"{res}")
             self.mode_lbl.configure(text=("D" if self.evaluator.deg_mode else "R"))
             self._add_history(expr, res)
+
+            play_sound("assets/cat.mp3")
+            
         except Exception as e:
             self.result_var.set(f"Error: {e}")
 

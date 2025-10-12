@@ -1,5 +1,9 @@
 from PIL import Image
+from .sound_player import play as play_sound
+
 import customtkinter as ctk
+
+
 
 class PetWidget(ctk.CTkFrame):
     def __init__(self, master, image_path, size=(64, 64)):
@@ -39,14 +43,13 @@ class PetWidget(ctk.CTkFrame):
         self._hover_i += 1
         self._hover_job = self.after(70, self._wiggle)
 
-
     def _on_click(self, _event=None):
         if self._animating:
             return
         self._animating = True
         scales = [1.0, 1.2, 1.35, 1.2, 1.0]
+        play_sound("assets/cat.mp3")
         self._bounce(scales, 0)
-
 
     def _bounce(self, scales, idx):
         if idx >= len(scales):
