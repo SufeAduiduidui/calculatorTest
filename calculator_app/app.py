@@ -5,7 +5,7 @@ import customtkinter as ctk #ctk库，优化ui～ ctk开不需要太多的css或
 from .core.safe_eval import SafeEvaluator
 from .ui.calculator_page import CalculatorPage
 from .ui.convert_page import ConvertPage
-from .ui.plot_page import PlotPage
+
 from .ui.theme import palette_for
 
 #主应用GUI
@@ -23,24 +23,22 @@ class CalculatorApp(ctk.CTk):
         self.history = []
         self.theme_var = tk.StringVar(value="iOS Light")
         self.page_var = tk.StringVar(value="calc")
-        # Initialize palette early to avoid KeyError during widget styling
+
         self._palette = palette_for("iOS Light")
 
         self._build_navbar()
         self._build_pages()
 
         self.calc_page = CalculatorPage(self.calc_frame, evaluator=self.evaluator, palette=self._palette, theme_name=self.theme_var.get())
-        self.conv_page = ConvertPage(self.conv_frame)
-        self.plot_page = PlotPage(self.plot_frame, evaluator=self.evaluator, palette=self._palette, theme_name=self.theme_var.get())
+        self.conv_page = ConvertPage(self.conv_frame, evaluator=self.evaluator, palette=self._palette,theme_name=self.theme_var.get())
+
         self.calc_page.pack(fill="both", expand=True)
         self.conv_page.pack(fill="both", expand=True)
-        self.plot_page.pack(fill="both", expand=True)
 
         self.apply_theme("iOS Light")
         self._show_page("calc")
 
-#ui配色
-    # 顶层使用独立模块函数 palette_for(name)
+
 
 #顶部导航栏
     def _build_navbar(self):
@@ -52,9 +50,11 @@ class CalculatorApp(ctk.CTk):
 
         self.page_seg = ctk.CTkSegmentedButton(
             left,
-            values=["Calculator", "Convert", "Plot"],
-            command=lambda v: self._show_page({"Calculator":"calc", "Convert":"conv", "Plot":"plot"}[v]),
+            values=["Calculator", "Convert&Plot"],
+            command=lambda v: self._show_page({"Calculator": "calc", "Convert&Plot": "conv"}[v]),
         )
+
+
         self.page_seg.set("Calculator")
         self.page_seg.pack(side="left", padx=6)
 
@@ -77,21 +77,18 @@ class CalculatorApp(ctk.CTk):
 
         self.calc_frame = ctk.CTkFrame(body, corner_radius=12)
         self.conv_frame = ctk.CTkFrame(body, corner_radius=12)
-        self.plot_frame = ctk.CTkFrame(body, corner_radius=12)
 
     def _show_page(self, key):
         self.page_var.set(key)
-        for f in (self.calc_frame, self.conv_frame, self.plot_frame):
+        for f in (self.calc_frame, self.conv_frame):
             f.pack_forget()
         if key == "calc":
             self.calc_frame.pack(fill="both", expand=True, padx=8, pady=8)
             self.page_seg.set("Calculator")
-        elif key == "conv":
-            self.conv_frame.pack(fill="both", expand=True, padx=8, pady=8)
-            self.page_seg.set("Convert")
         else:
-            self.plot_frame.pack(fill="both", expand=True, padx=8, pady=8)
-            self.page_seg.set("Plot")
+            self.conv_frame.pack(fill="both", expand=True, padx=8, pady=8)
+            self.page_seg.set("Convert&Plot")
+
 
     def apply_theme(self, name):
         self.theme_var.set(name)
@@ -103,7 +100,7 @@ class CalculatorApp(ctk.CTk):
                 self.body.configure(fg_color=pal.get("bg", "#F5F5F5"))
                 self.calc_frame.configure(fg_color=pal.get("bg", "#F5F5F5"))
                 self.conv_frame.configure(fg_color=pal.get("bg", "#F5F5F5"))
-                self.plot_frame.configure(fg_color=pal.get("bg", "#F5F5F5"))
+
             except Exception:
                 pass
             for seg in (self.page_seg, self.theme_seg):
