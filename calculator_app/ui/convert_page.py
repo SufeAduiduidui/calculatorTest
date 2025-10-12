@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.font as tkfont
 import customtkinter as ctk
 import math
 from ..core.units import UnitConverter
@@ -12,6 +13,8 @@ class ConvertPage(ctk.CTkFrame):
         self._theme_name = theme_name
         self._plot_points = []
         self._plot_bounds = None
+        self._query_point = None
+
         self._build()
 
     # ---- Convert Tab ---------------------------------------------------------
@@ -75,6 +78,17 @@ class ConvertPage(ctk.CTkFrame):
         self.plot_btn = ctk.CTkButton(ctrl, text="Plot", command=self.plot)
         self.plot_btn.pack(side="left", padx=8)
 
+        self.qx_var = tk.StringVar(value="0")
+        ctk.CTkLabel(ctrl, text="x =").pack(side="left", padx=(12, 4))
+        qx_entry = ctk.CTkEntry(ctrl, textvariable=self.qx_var, width=100)
+        qx_entry.pack(side="left", padx=4)
+        ctk.CTkButton(ctrl, text="Eval", command=self.eval_point).pack(side="left", padx=6)
+        qx_entry.bind("<Return>", lambda e: self.eval_point())
+
+        self.qy_var = tk.StringVar(value="")
+        ctk.CTkLabel(frame, textvariable=self.qy_var).pack(anchor="w", padx=10)
+
+
         self.plot_status = tk.StringVar(value="")
         ctk.CTkLabel(frame, textvariable=self.plot_status).pack(anchor="w", padx=10)
 
@@ -137,7 +151,9 @@ class ConvertPage(ctk.CTkFrame):
             self.plot_status.set(f"Error: {e}")
             return
 
-        samples = max(400, min(1200, int(max(self.canvas.winfo_width(), 1))))
+        self.canvas.update_idletasks()
+        cw = max(1, self.canvas.winfo_width())
+        samples = max(400, min(1200, int(cw)))
         xs = [xmin + (xmax - xmin) * i / (samples - 1) for i in range(samples)]
         valid_points = []
         err_count = 0
@@ -156,26 +172,52 @@ class ConvertPage(ctk.CTkFrame):
             self.plot_status.set("Error: no valid points to plot")
             self._plot_points = []
             self._plot_bounds = None
-            if not math.isfinite(ymin) or not math.isfinite(ymax) or ymin == ymax:
-                ymin, ymax = ymin - 1.0, ymax + 1.0
+            self._redraw_plot()
+            return
+
+        ymin = min(y for _, y in valid_points)
+        ymax = max(y for _, y in valid_points)
+        if not math.isfinite(ymin) or not math.isfinite(ymax) or ymin == ymax:
+            ymin, ymax = ymin - 1.0, ymax + 1.0
 
         self._plot_points = valid_points
         self._plot_bounds = (xmin, xmax, ymin, ymax)
-        self.plot_status.set(f"Plotted: {expr}   Mode: {'DEG' if self.evaluator.deg_mode else 'RAD'}   invalid points: {err_count}")
+        self.plot_status.set(
+            f"Plotted: {expr}   Mode: {'DEG' if self.evaluator.deg_mode else 'RAD'}   invalid points: {err_count}")
         self._redraw_plot()
+
+    def eval_point(self):
+        s = self.qx_var.get().strip()
+        try:
+            x = float(s)
+            expr = self.func_expr.get().strip()
+            y = self.evaluator.evaluate(expr, variables={"x": x})
+            if not isinstance(y, (int, float)) or not math.isfinite(y):
+                raise ValueError("Invalid result")
+            self._query_point = (x, float(y))
+            self.qy_var.set(f"f({x}) = {y}")
+            self._redraw_plot()
+        except Exception as e:
+            self._query_point = None
+            self.qy_var.set(f"Error: {e}")
 
     def _redraw_plot(self):
         c = self.canvas
         c.delete("all")
         w = max(1, c.winfo_width())
         h = max(1, c.winfo_height())
-        pad = 30
+        base_pad = 30
+        pad_left = base_pad
+        pad_right = base_pad
+        pad_top = base_pad
+        pad_bottom = base_pad
 
         pal = self._palette or {}
         border = pal.get("border", "#CCCCCC")
         grid_color = pal.get("grid", "#DDDDDD")
         axis_color = pal.get("axis", "#666666")
         plot_color = pal.get("accent", "#0B64F4")
+        text_color = pal.get("subtext", "#6C6C70")
 
         c.configure(bg=pal.get("surface", "#FFFFFF"), highlightbackground=border)
 
@@ -189,19 +231,79 @@ class ConvertPage(ctk.CTkFrame):
         if xr == 0 or yr == 0:
             return
 
+        def nice_step(a, b, target):
+            rng = b - a
+            if rng <= 0:
+                return 1.0
+            raw = rng / max(1, target)
+            exp = math.floor(math.log10(raw)) if raw > 0 else 0
+            base = raw / (10 ** exp)
+            for m in (1, 2, 5, 10):
+                if base <= m:
+                    return m * (10 ** exp)
+            return 10 * (10 ** exp)
+
+        def fmt(v):
+            if abs(v) < 1e-9:
+                v = 0.0
+            if abs(v - round(v)) < 1e-9:
+                return str(int(round(v)))
+            return f"{v:.6g}"
+
+        xstep = nice_step(xmin, xmax, 8)
+        ystep = nice_step(ymin, ymax, 8)
+
+        xticks = []
+        xt = math.ceil(xmin / xstep) * xstep
+        cnt = 0
+        while xt <= xmax and cnt < 1000:
+            xticks.append(xt)
+            xt += xstep
+            cnt += 1
+
+        yticks = []
+        yt = math.ceil(ymin / ystep) * ystep
+        cnt = 0
+        while yt <= ymax and cnt < 1000:
+            yticks.append(yt)
+            yt += ystep
+            cnt += 1
+
+        if yticks:
+            tick_font = tkfont.nametofont("TkDefaultFont")
+            max_width = max(tick_font.measure(fmt(v)) for v in yticks)
+            pad_left = max(pad_left, max_width + 12)
+
+        plot_width = w - pad_left - pad_right
+        plot_height = h - pad_top - pad_bottom
+        if plot_width <= 0 or plot_height <= 0:
+            return
+
         def to_canvas(x, y):
-            px = pad + (x - xmin) * (w - 2 * pad) / xr
-            py = h - (pad + (y - ymin) * (h - 2 * pad) / yr)
+            px = pad_left + (x - xmin) * plot_width / xr
+            py = h - pad_bottom - (y - ymin) * plot_height / yr
             return px, py
 
-        c.create_rectangle(pad, pad, w - pad, h - pad, outline=grid_color)
+        c.create_rectangle(pad_left, pad_top, w - pad_right, h - pad_bottom, outline=grid_color)
 
         if ymin <= 0 <= ymax:
-            x0, y0 = to_canvas(xmin, 0); x1, y1 = to_canvas(xmax, 0)
+            x0, y0 = to_canvas(xmin, 0)
+            x1, y1 = to_canvas(xmax, 0)
             c.create_line(x0, y0, x1, y1, fill=axis_color)
         if xmin <= 0 <= xmax:
-            x0, y0 = to_canvas(0, ymin); x1, y1 = to_canvas(0, ymax)
+            x0, y0 = to_canvas(0, ymin)
+            x1, y1 = to_canvas(0, ymax)
             c.create_line(x0, y0, x1, y1, fill=axis_color)
+
+        for xt in xticks:
+            px, _ = to_canvas(xt, ymin)
+            c.create_line(px, h - pad_bottom, px, h - pad_bottom + 4, fill=axis_color)
+            c.create_text(px, h - pad_bottom + 12, text=fmt(xt), fill=text_color, anchor="n")
+
+        for yt in yticks:
+            _, py = to_canvas(xmin, yt)
+            c.create_line(pad_left - 4, py, pad_left, py, fill=axis_color)
+            c.create_text(pad_left - 6, py, text=fmt(yt), fill=text_color, anchor="e")
 
         path = []
         for x, y in self._plot_points:
@@ -210,13 +312,29 @@ class ConvertPage(ctk.CTkFrame):
                 path.append((px, py))
             else:
                 if len(path) >= 2:
-                    c.create_line(path, fill=plot_color, width=2, smooth=True)
+                    flat = []
+                    for a, b in path:
+                        flat.extend([a, b])
+                    c.create_line(flat, fill=plot_color, width=2, smooth=True)
                 path = []
         if len(path) >= 2:
-            c.create_line(path, fill=plot_color, width=2, smooth=True)
+            flat = []
+            for a, b in path:
+                flat.extend([a, b])
+            c.create_line(flat, fill=plot_color, width=2, smooth=True)
+
+        qp = getattr(self, "_query_point", None)
+        if qp is not None:
+            qx, qy = qp
+            if isinstance(qx, (int, float)) and isinstance(qy, (int, float)) and math.isfinite(qx) and math.isfinite(
+                    qy):
+                px, py = to_canvas(qx, qy)
+                r = 4
+                c.create_oval(px - r, py - r, px + r, py + r, fill=plot_color, outline=plot_color)
+                c.create_text(px + 8, py - 8, text=f"({fmt(qx)},{fmt(qy)})", fill=pal.get("text", "#000000"),
+                              anchor="sw")
 
     def apply_theme(self, pal, name):
         self._palette = pal
         self._theme_name = name
         self._redraw_plot()
-

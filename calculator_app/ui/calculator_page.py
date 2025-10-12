@@ -67,7 +67,7 @@ class CalculatorPage(ctk.CTkFrame):
             [("SOLVE", None, "ghost", False), ("CALC", None, "ghost", False),
              ("OPTN", None, "ghost", False), ("x^3", "**3", "func", True), ("x^2", "**2", "func", True)],
 
-            [("sqrt", "sqrt(", "func", True), ("y√x", None, "ghost", False),
+            [("sqrt", "sqrt(", "func", True), ("y√x", self._insert_y_root, "func_call", True),
              ("1/x", "1/(", "func", True), ("log10", "log10(", "func", True), ("ln", "ln(", "func", True)],
 
             [("(-)", "-", "func", True), ("\u03C0", "pi", "func", True),
@@ -207,6 +207,9 @@ class CalculatorPage(ctk.CTkFrame):
     def _toggle_drg(self):
         self.evaluator.deg_mode = not self.evaluator.deg_mode
         self.mode_lbl.configure(text="D" if self.evaluator.deg_mode else "R")
+
+    def _insert_y_root(self):
+        self.insert_text("root(")
 
     # ---- Calculator logic ----------------------------------------------------
     def insert_text(self, text):
