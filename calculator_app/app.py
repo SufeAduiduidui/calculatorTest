@@ -4,7 +4,7 @@ import customtkinter as ctk #ctk库，优化ui～ ctk开不需要太多的css或
 
 from .core.safe_eval import SafeEvaluator
 from .ui.calculator_page import CalculatorPage
-from .ui.convert_page import ConvertPage
+from .ui.convert_plot_page import ConvertPage
 
 from .ui.theme import palette_for
 
