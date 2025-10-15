@@ -52,15 +52,22 @@ class CalculatorApp(ctk.CTk):
         left = ctk.CTkFrame(bar, fg_color="transparent")
         left.pack(side="left", padx=6, pady=8)
 
+        self._page_labels = {
+            "calc": "calculator",
+            "conv": "convert&plot",
+            "pet": "猫咪热量计算器",
+        }
+        initial_values = [self._page_labels["calc"], self._page_labels["conv"]]
+        self._segment_values = tuple(initial_values)
         self.page_seg = ctk.CTkSegmentedButton(
             left,
-            values=["Calculator", "Convert&Plot"],
-            command=lambda v: self._show_page({"Calculator": "calc", "Convert&Plot": "conv"}[v]),
+            values=initial_values,
+            command=self._on_page_segment_change,
         )
 
-
-        self.page_seg.set("Calculator")
+        self.page_seg.set(self._page_labels["calc"])
         self.page_seg.pack(side="left", padx=6)
+
 
         right = ctk.CTkFrame(bar, fg_color="transparent")
         right.pack(side="right", padx=6, pady=8)
@@ -83,21 +90,55 @@ class CalculatorApp(ctk.CTk):
         self.conv_frame = ctk.CTkFrame(body, corner_radius=12)
         self.pet_frame = ctk.CTkFrame(body, corner_radius=12)
 
+    def _set_segment_values(self, include_pet: bool) -> None:
+        desired = [self._page_labels["calc"], self._page_labels["conv"]]
+        if include_pet:
+            desired.append(self._page_labels["pet"])
+        desired_tuple = tuple(desired)
+        if getattr(self, "_segment_values", None) != desired_tuple:
+            try:
+                self.page_seg.configure(values=desired)
+            except Exception:
+                return
+            self._segment_values = desired_tuple
+
+
     def _show_page(self, key):
         self.page_var.set(key)
         for f in (self.calc_frame, self.conv_frame, self.pet_frame):
             f.pack_forget()
+
+        include_pet = key == "pet"
+        self._set_segment_values(include_pet)
+
         if key == "calc":
             self.calc_frame.pack(fill="both", expand=True, padx=8, pady=8)
-            self.page_seg.set("Calculator")
+            self.page_seg.set(self._page_labels["calc"])
         elif key == "conv":
             self.conv_frame.pack(fill="both", expand=True, padx=8, pady=8)
-            self.page_seg.set("Convert&Plot")
-        elif key == "pet":  #不改变顶部分段按钮当前状态
+            self.page_seg.set(self._page_labels["conv"])
+        elif key == "pet":
             self.pet_frame.pack(fill="both", expand=True, padx=8, pady=8)
+            self.page_seg.set(self._page_labels["pet"])
+            try:
+                self.pet_page.on_show()
+            except Exception:
+                pass
+        else:
+            self._show_page("calc")
+
+    def _on_page_segment_change(self, label):
+        for key, value in self._page_labels.items():
+            if value == label:
+                self._show_page(key)
+                return
+        self._show_page("calc")
 
     def open_pet_calculator(self):
         self._show_page("pet")
+
+    def open_calculator(self):
+        self._show_page("calc")
 
     def apply_theme(self, name):
         self.theme_var.set(name)
