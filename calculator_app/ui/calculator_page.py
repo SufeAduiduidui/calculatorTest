@@ -1,10 +1,12 @@
+import time
 import tkinter as tk
 import customtkinter as ctk
 
-from .pet_widget import PetWidget#桌宠test
+from .pet_widget import PetWidget  # 桌宠
 from ..core.safe_eval import SafeEvaluator
 
 from .sound_player import play as play_sound
+from .dialogs import show_cat_bubble
 
 
 class CalculatorPage(ctk.CTkFrame):
@@ -17,6 +19,10 @@ class CalculatorPage(ctk.CTkFrame):
         self._func_buttons = []
         self._digit_buttons = []
         self._op_buttons = []
+        self._pet_bubble = None
+        self._pet_hint_shown = False
+        self._pet_click_count = 0
+        self._pet_last_click_ts = 0.0
         self._build()
 
     # ---- Calculator (ClassWiz-like) -----------------------------------------
@@ -41,7 +47,13 @@ class CalculatorPage(ctk.CTkFrame):
         self.lbl_sub.pack()
 
 
-        self.pet = PetWidget(right, image_path="assets/pet.jpg", size=(64, 64),on_triple_click=self._open_pet_calc)
+        self.pet = PetWidget(
+            right,
+            image_path="assets/pet.jpg",
+            size=(64, 64),
+            on_click=self._handle_pet_single_click,
+            on_triple_click=self._open_pet_calc,
+        )
         self.pet.pack(padx=6, pady=0)
 
 
@@ -170,6 +182,34 @@ class CalculatorPage(ctk.CTkFrame):
                 app.open_pet_calculator()
             except Exception:
                 pass
+
+    def _handle_pet_single_click(self):
+        now = time.time()
+        if now - self._pet_last_click_ts > 0.9:
+            self._pet_click_count = 0
+        self._pet_last_click_ts = now
+        self._pet_click_count += 1
+
+        if self._pet_bubble and self._pet_bubble.winfo_exists():
+            try:
+                self._pet_bubble.destroy()
+            except Exception:
+                pass
+            self._pet_bubble = None
+
+        if self._pet_click_count >= 3:
+            self._pet_click_count = 0
+            self._open_pet_calc()
+            return
+
+        self._pet_bubble = show_cat_bubble(
+            self.pet._label,
+            "再多点击几次可能会有意想不到的事情发生哦~",
+            palette=self._palette,
+            direction="left",
+            wrap_width=260,
+        )
+        self._pet_hint_shown = True
 
     # ---- Styles/helpers ------------------------------------------------------
     def _style_func_button(self, b, kind, enabled=True):

@@ -1,7 +1,13 @@
+import time
 import tkinter as tk
 from typing import Dict, Tuple
 import customtkinter as ctk
 import math
+import random
+
+from .pet_widget import PetWidget
+from .dialogs import show_cat_bubble
+from .sound_player import play as play_sound
 
 class PetCaloriePage(ctk.CTkFrame):
     _CAT_DER_RANGE: dict[str, tuple[float, float]]
@@ -51,6 +57,14 @@ class PetCaloriePage(ctk.CTkFrame):
 
         # DER 范围缓存
         self._der_range = self._CAT_DER_RANGE[self.stage_var.get()]
+        self._desk_pet = None
+        self._desk_pet_bubble = None
+        self._desk_pet_click_count = 0
+        self._desk_pet_last_click = 0.0
+        self._angry_mode = False
+        self._angry_modal = None
+        self._warning_modal = None
+        self._angry_state = 0
 
         self._build()
         self.apply_theme(self._palette, self._theme_name)
@@ -64,8 +78,20 @@ class PetCaloriePage(ctk.CTkFrame):
 
         top = ctk.CTkFrame(self.device, fg_color="transparent")
         top.pack(side="top", fill="x", padx=20, pady=(16, 8))
-        ctk.CTkLabel(top, text="猫咪热量计算器", font=("SF Pro Display", 20, "bold")).pack(side="left")
+        left = ctk.CTkFrame(top, fg_color="transparent")
+        left.pack(side="left", fill="both", expand=True)
+        self._title_label = ctk.CTkLabel(left, text="猫咪热量计算器", font=("SF Pro Display", 20, "bold"))
+        self._title_label.pack(anchor="w")
 
+        right = ctk.CTkFrame(top, fg_color="transparent")
+        right.pack(side="right")
+        self._desk_pet = PetWidget(
+            right,
+            image_path="assets/maodie_changtai.jpg",
+            size=(72, 72),
+            on_click=self._on_desk_pet_click,
+        )
+        self._desk_pet.pack(padx=6)
         card = ctk.CTkFrame(self.device, corner_radius=20)
         card.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         self._card = card
@@ -294,6 +320,280 @@ class PetCaloriePage(ctk.CTkFrame):
         self.rer_text.set(f"RER：{rer:.0f} kcal/日")
         self.der_text.set(f"DER：{der_kcal:.0f} kcal/日")
         self.result_var.set(f"每日建议摄入：{grams:.0f} g（约 {der_kcal:.0f} kcal）")
+
+    def on_show(self):
+        if self._angry_modal and self._angry_modal.winfo_exists():
+            self._angry_modal.focus_force()
+            return
+        if self._warning_modal and self._warning_modal.winfo_exists():
+            try:
+                self._warning_modal.grab_release()
+            except Exception:
+                pass
+            self._warning_modal.destroy()
+        self._warning_modal = None
+        if self._desk_pet_bubble and self._desk_pet_bubble.winfo_exists():
+            try:
+                self._desk_pet_bubble.destroy()
+            except Exception:
+                pass
+        self._desk_pet_bubble = None
+        self._desk_pet_click_count = 0
+        self._desk_pet_last_click = 0.0
+        self._angry_mode = False
+        self._angry_state = 0
+        if self._desk_pet and self._desk_pet.winfo_exists():
+            self._desk_pet.set_enabled(True)
+            self._desk_pet.set_image("assets/maodie_changtai.jpg", size=(72, 72))
+            self._desk_pet_bubble = show_cat_bubble(
+                self._desk_pet._label,
+                "人，你要来喂耄了吗？",
+                palette=self._palette,
+                direction="left",
+                wrap_width=260,
+            )
+
+    def _on_desk_pet_click(self):
+        if self._angry_mode:
+            return
+        now = time.time()
+        if now - self._desk_pet_last_click > 0.9:
+            self._desk_pet_click_count = 0
+        self._desk_pet_last_click = now
+        self._desk_pet_click_count += 1
+
+        if self._desk_pet_bubble and self._desk_pet_bubble.winfo_exists():
+            try:
+                self._desk_pet_bubble.destroy()
+            except Exception:
+                pass
+            self._desk_pet_bubble = None
+
+        if self._desk_pet_click_count >= 3:
+            self._desk_pet_click_count = 0
+            if self._angry_state == 0:
+                self._show_warning_modal()
+            else:
+                self._trigger_angry_pet()
+            return
+
+        lines = [
+            "人，我是听话的小猫",
+            "人，你要记得按时喂猫哦",
+            "人，你今天过得怎么样？",
+        ]
+        if self._desk_pet and self._desk_pet.winfo_exists():
+            self._desk_pet_bubble = show_cat_bubble(
+                self._desk_pet._label,
+                random.choice(lines),
+                palette=self._palette,
+                direction="left",
+                wrap_width=260,
+            )
+
+    def _show_warning_modal(self):
+        if self._warning_modal and self._warning_modal.winfo_exists():
+            self._warning_modal.focus_force()
+            return
+        pal = self._palette or {}
+        hover_soft = pal.get("func_hover", pal.get("surface", "#E5E5EA"))
+        border_color = pal.get("border", "#D1D1D6")
+        modal = ctk.CTkToplevel(self)
+        modal.title("哈！")
+        modal.resizable(False, False)
+        modal.configure(fg_color=pal.get("surface", "#FFFFFF"))
+        modal.transient(self.winfo_toplevel())
+        modal.grab_set()
+        modal.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        container = ctk.CTkFrame(modal, fg_color=pal.get("surface", "#FFFFFF"), corner_radius=20)
+        container.pack(fill="both", expand=True, padx=36, pady=28)
+
+        title_lbl = ctk.CTkLabel(
+            container,
+            text="哈！",
+            font=("SF Pro Display", 24, "bold"),
+            text_color=pal.get("text", "#000000"),
+        )
+        title_lbl.pack(anchor="w")
+
+        content_lbl = ctk.CTkLabel(
+            container,
+            text="小猫好像不太能接受你的热情？",
+            font=("Microsoft YaHei UI", 14),
+            text_color=pal.get("subtext", "#6C6C70"),
+            justify="left",
+            wraplength=360,
+        )
+        content_lbl.pack(anchor="w", pady=(14, 24))
+
+        btn_row = ctk.CTkFrame(container, fg_color="transparent")
+        btn_row.pack(fill="x", pady=(0, 8))
+
+        def close_warning():
+            if self._warning_modal and self._warning_modal.winfo_exists():
+                try:
+                    self._warning_modal.grab_release()
+                except Exception:
+                    pass
+                self._warning_modal.destroy()
+            self._warning_modal = None
+
+        def handle_soft():
+            close_warning()
+            self._angry_state = max(self._angry_state, 1)
+
+        def handle_brave():
+            close_warning()
+            self._angry_state = max(self._angry_state, 1)
+            self._trigger_angry_pet()
+
+        btn_soft = ctk.CTkButton(
+            btn_row,
+            text="好吧，我会注意适度撸猫",
+            command=handle_soft,
+            fg_color=pal.get("surface", "#FFFFFF"),
+            hover_color=hover_soft,
+            text_color=pal.get("text", "#000000"),
+            border_width=1,
+            border_color=border_color,
+            corner_radius=16,
+            width=360,
+        )
+        btn_soft.pack(fill="x", pady=(0, 10))
+
+        btn_brave = ctk.CTkButton(
+            btn_row,
+            text="明知山有虎，偏向虎山行！",
+            command=handle_brave,
+            fg_color=pal.get("orange", "#E67E36"),
+            hover_color=pal.get("orange", "#E67E36"),
+            text_color=pal.get("accent_text", "#FFFFFF"),
+            corner_radius=16,
+            width=360,
+        )
+        btn_brave.pack(fill="x")
+
+        modal.update_idletasks()
+        parent = self.winfo_toplevel()
+        try:
+            px = parent.winfo_rootx()
+            py = parent.winfo_rooty()
+            pw = parent.winfo_width()
+            ph = parent.winfo_height()
+        except Exception:
+            px = py = 100
+            pw = ph = 400
+        mw = max(modal.winfo_width(), 460)
+        mh = max(modal.winfo_height(), 240)
+        x = px + (pw - mw) // 2
+        y = py + (ph - mh) // 2
+        modal.geometry(f"{mw}x{mh}+{int(x)}+{int(y)}")
+        btn_soft.focus_set()
+        self._warning_modal = modal
+        self._angry_state = max(self._angry_state, 1)
+
+    def _trigger_angry_pet(self):
+        if self._angry_mode:
+            return
+        if self._warning_modal and self._warning_modal.winfo_exists():
+            try:
+                self._warning_modal.grab_release()
+            except Exception:
+                pass
+            self._warning_modal.destroy()
+        self._warning_modal = None
+        self._angry_state = 2
+        self._angry_mode = True
+        if self._desk_pet and self._desk_pet.winfo_exists():
+            self._desk_pet.set_enabled(False)
+            self._desk_pet.set_image("assets/maodie_haqi.gif", size=(72, 72))
+        try:
+            play_sound("assets/maodie_haqi.mp3")
+        except Exception:
+            pass
+        self._show_angry_modal()
+
+    def _show_angry_modal(self):
+        if self._angry_modal and self._angry_modal.winfo_exists():
+            self._angry_modal.focus_force()
+            return
+        pal = self._palette or {}
+        modal = ctk.CTkToplevel(self)
+        modal.title("哈！！！")
+        modal.resizable(False, False)
+        modal.configure(fg_color=pal.get("surface", "#FFFFFF"))
+        modal.transient(self.winfo_toplevel())
+        modal.grab_set()
+        modal.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        container = ctk.CTkFrame(modal, fg_color=pal.get("surface", "#FFFFFF"), corner_radius=20)
+        container.pack(fill="both", expand=True, padx=36, pady=30)
+
+        title_lbl = ctk.CTkLabel(
+            container,
+            text="哈！！！",
+            font=("SF Pro Display", 28, "bold"),
+            text_color=pal.get("text", "#000000"),
+        )
+        title_lbl.pack(anchor="w")
+
+        content_lbl = ctk.CTkLabel(
+            container,
+            text="小猫很生气，并撤回了一个计算器",
+            font=("Microsoft YaHei UI", 15),
+            text_color=pal.get("subtext", "#6C6C70"),
+            justify="left",
+            wraplength=380,
+        )
+        content_lbl.pack(anchor="w", pady=(16, 32))
+
+        exit_btn = ctk.CTkButton(
+            container,
+            text="耄好，人坏",
+            command=self._terminate_application,
+            fg_color=pal.get("orange", "#E67E36"),
+            hover_color=pal.get("orange", "#E67E36"),
+            text_color=pal.get("accent_text", "#FFFFFF"),
+            corner_radius=18,
+            height=48,
+            width=360,
+        )
+        exit_btn.pack(fill="x")
+
+        modal.update_idletasks()
+        parent = self.winfo_toplevel()
+        try:
+            px = parent.winfo_rootx()
+            py = parent.winfo_rooty()
+            pw = parent.winfo_width()
+            ph = parent.winfo_height()
+        except Exception:
+            px = py = 100
+            pw = ph = 400
+        mw = max(modal.winfo_width(), 460)
+        mh = max(modal.winfo_height(), 240)
+        x = px + (pw - mw) // 2
+        y = py + (ph - mh) // 2
+        modal.geometry(f"{mw}x{mh}+{int(x)}+{int(y)}")
+        exit_btn.focus_set()
+        self._angry_modal = modal
+
+    def _terminate_application(self):
+        if self._angry_modal and self._angry_modal.winfo_exists():
+            try:
+                self._angry_modal.grab_release()
+            except Exception:
+                pass
+            self._angry_modal.destroy()
+        self._angry_modal = None
+        root = self.winfo_toplevel()
+        try:
+            root.destroy()
+        except Exception:
+            pass
+
+
 
 
     def apply_theme(self, pal, name):
