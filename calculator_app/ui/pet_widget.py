@@ -1,12 +1,10 @@
+# calculator_app/ui/pet_widget.py
 from PIL import Image
 from .sound_player import play as play_sound
-
 import customtkinter as ctk
 
-
-
 class PetWidget(ctk.CTkFrame):
-    def __init__(self, master, image_path, size=(64, 64)):
+    def __init__(self, master, image_path, size=(64, 64), on_triple_click=None):
         super().__init__(master, corner_radius=0, fg_color="transparent")
         self._src = Image.open(image_path)
         self._size = size
@@ -16,9 +14,26 @@ class PetWidget(ctk.CTkFrame):
         self._hover_job = None
         self._hover_i = 0
         self._animating = False
+
+        self._on_triple_cb = on_triple_click
+
         self._label.bind("<Enter>", self._on_enter)
         self._label.bind("<Leave>", self._on_leave)
         self._label.bind("<Button-1>", self._on_click)
+
+        self._label.bind("<Triple-Button-1>", self._on_triple)
+
+    def _on_triple(self, _event=None):
+        if callable(self._on_triple_cb):
+            try:
+                self._on_triple_cb()
+            except Exception:
+                pass
+        else:
+            try:
+                self.event_generate("<<PetTripleClick>>")
+            except Exception:
+                pass
 
     def _on_enter(self, _event=None):
         if self._hover_job is None:
@@ -60,4 +75,3 @@ class PetWidget(ctk.CTkFrame):
         self._img = ctk.CTkImage(self._src, size=size)
         self._label.configure(image=self._img)
         self.after(80, lambda: self._bounce(scales, idx + 1))
-
