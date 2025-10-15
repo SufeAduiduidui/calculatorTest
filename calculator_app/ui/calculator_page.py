@@ -1,312 +1,317 @@
 import tkinter as tk
-from typing import Dict, Tuple
 import customtkinter as ctk
-import math
 
-class PetCaloriePage(ctk.CTkFrame):
-    _CAT_DER_RANGE: dict[str, tuple[float, float]]
+from .pet_widget import PetWidget#桌宠test
+from ..core.safe_eval import SafeEvaluator
 
-    def __init__(self, master, palette=None, theme_name="iOS Light"):
+from .sound_player import play as play_sound
+
+
+class CalculatorPage(ctk.CTkFrame):
+    def __init__(self, master, evaluator: SafeEvaluator, palette, theme_name):
         super().__init__(master, corner_radius=12)
-        self._palette = palette or {}
+        self.evaluator = evaluator
+        self._palette = palette
         self._theme_name = theme_name
-
-
-        self._CAT_DER_RANGE = {
-            "发育期": (2.0, 2.5),
-            "未结扎": (1.4, 1.6),
-            "已结扎": (1.2, 1.4),
-            "过胖": (0.8, 1.0),
-            "过瘦": (1.2, 1.8),
-            "11岁以上高龄": (1.1, 1.6),
-        }
-
-
-        self._BRANDS = {#品牌
-            "猫粮": {
-                "Orijen Cat&Kitten": 404,
-                "Royal Canin Indoor27": 360,
-                "Purina Pro Plan": 390,
-            },
-            "罐头": {
-                "希宝金标(85g)": 85,
-                "天衡宝(156g)": 110,
-            },
-            "冻干": {
-                "ZIWI Peak": 520,
-            },
-            "混合": {}
-        }
-
-#变量
-        self.weight_var = tk.StringVar(value="")
-        self.stage_var = tk.StringVar(value="已结扎")
-        self.der_var = tk.StringVar(value="")
-        self.food_var = tk.StringVar(value="猫粮")
-        self.brand_var = tk.StringVar(value="自定义")
-        self.kcal_var = tk.StringVar(value="380") #默认猫粮
-        self.result_var = tk.StringVar(value="每日建议：- g（- kcal）")
-        self.rer_text = tk.StringVar(value="RER：- kcal/日")
-        self.der_text = tk.StringVar(value="DER：- kcal/日")
-
-        # DER 范围缓存
-        self._der_range = self._CAT_DER_RANGE[self.stage_var.get()]
-
+        self.history = []
+        self._func_buttons = []
+        self._digit_buttons = []
+        self._op_buttons = []
         self._build()
-        self.apply_theme(self._palette, self._theme_name)
 
-#UI--
+    # ---- Calculator (ClassWiz-like) -----------------------------------------
     def _build(self):
-        root = self
+        frame = self
 
-        self.device = ctk.CTkFrame(root, corner_radius=24)
+        self.device = ctk.CTkFrame(frame, corner_radius=24)
         self.device.pack(fill="both", expand=True, padx=40, pady=20)
 
-        top = ctk.CTkFrame(self.device, fg_color="transparent")
-        top.pack(side="top", fill="x", padx=20, pady=(16, 8))
-        ctk.CTkLabel(top, text="猫咪热量计算器", font=("SF Pro Display", 20, "bold")).pack(side="left")
+        brand = ctk.CTkFrame(self.device, fg_color="transparent")
+        brand.pack(side="top", fill="x", padx=20, pady=(18, 6))
 
-        card = ctk.CTkFrame(self.device, corner_radius=20)
-        card.pack(fill="both", expand=True, padx=20, pady=(0, 20))
-        self._card = card
+        left = ctk.CTkFrame(brand, fg_color="transparent")
+        left.pack(side="left", fill="both", expand=True)
 
+        right = ctk.CTkFrame(brand, fg_color="transparent")
+        right.pack(side="right")
 
-        res_row = ctk.CTkFrame(card, fg_color="transparent") # 结果显示
-        res_row.pack(fill="x", padx=16, pady=(16, 6))
-        res = ctk.CTkEntry(res_row, textvariable=self.result_var, justify="right", state="disabled")
-        res.pack(fill="x")
-
-
-        info_row = ctk.CTkFrame(card, fg_color="transparent")
-        info_row.pack(fill="x", padx=16, pady=(2, 8))
-        ctk.CTkLabel(info_row, textvariable=self.rer_text).pack(side="left")
-        ctk.CTkLabel(info_row, textvariable=self.der_text).pack(side="right")
+        self.lbl_brand = ctk.CTkLabel(left, text="CASIO", font=("SF Pro Display", 18, "bold"))
+        self.lbl_sub = ctk.CTkLabel(left, text="CLASSWIZ", font=("SF Pro Text", 12))
+        self.lbl_brand.pack()
+        self.lbl_sub.pack()
 
 
-        w_block = ctk.CTkFrame(card, corner_radius=14)
-        w_block.pack(fill="x", padx=16, pady=8)
-        ctk.CTkLabel(w_block, text="体重").pack(anchor="w", padx=12, pady=(10, 2))
-        w_entry = ctk.CTkEntry(w_block, placeholder_text="单位：kg（例如 4.2）", textvariable=self.weight_var)
-        w_entry.pack(fill="x", padx=12, pady=(0, 12))
-        self.weight_var.trace_add("write", lambda *_: self._update_preview())
+        self.pet = PetWidget(right, image_path="assets/pet.jpg", size=(64, 64),on_triple_click=self._open_pet_calc)
+        self.pet.pack(padx=6, pady=0)
 
 
-        s_block = ctk.CTkFrame(card, corner_radius=14)
-        s_block.pack(fill="x", padx=16, pady=8)
-        ctk.CTkLabel(s_block, text="阶段").pack(anchor="w", padx=12, pady=(10, 2))
-        s_row = ctk.CTkFrame(s_block, fg_color="transparent")
-        s_row.pack(fill="x", padx=12, pady=(0, 12))
-        self.stage_menu = ctk.CTkOptionMenu(s_row,
-                                            values=list(self._CAT_DER_RANGE.keys()),
-                                            command=self._on_stage_change,
-                                            variable=self.stage_var)
-        self.stage_menu.pack(side="left")
-        self.stage_tip = ctk.CTkLabel(s_row, text="")
-        self.stage_tip.pack(side="right")
+        screen = ctk.CTkFrame(self.device, corner_radius=12)
+        screen.pack(fill="x", padx=20, pady=(6, 12))
+        scr_row = ctk.CTkFrame(screen, fg_color="transparent")
+        scr_row.pack(fill="x", padx=10, pady=8)
+
+        self.expr_var = tk.StringVar()
+        self.expr_entry = ctk.CTkEntry(scr_row, textvariable=self.expr_var, height=36, font=("Consolas", 16))
+        self.expr_entry.pack(side="left", fill="x", expand=True)
+        self.expr_entry.bind("<Return>", lambda e: self.calculate())
+
+        self.mode_lbl = ctk.CTkLabel(scr_row, text=("D" if self.evaluator.deg_mode else "R"), font=("SF Pro Text", 14))
+        self.mode_lbl.pack(side="right", padx=(6, 0))
+
+        self.result_var = tk.StringVar(value="0")
+        self.res_lbl = ctk.CTkLabel(screen, textvariable=self.result_var, anchor="e", font=("Consolas", 28))
+        self.res_lbl.pack(fill="x", padx=10, pady=(0, 8))
+
+        func_area = ctk.CTkFrame(self.device, corner_radius=14)
+        func_area.pack(fill="x", padx=20, pady=(0, 8))
+
+        funcs = [
+            [("SOLVE", None, "ghost", False), ("CALC", None, "ghost", False),
+             ("OPTN", None, "ghost", False), ("x^3", "**3", "func", True), ("x^2", "**2", "func", True)],
+
+            [("sqrt", "sqrt(", "func", True), ("y√x", self._insert_y_root, "func_call", True),
+             ("1/x", "1/(", "func", True), ("log10", "log10(", "func", True), ("ln", "ln(", "func", True)],
+
+            [("(-)", "-", "func", True), ("\u03C0", "pi", "func", True),
+             ("e", "e", "func", True), ("sin", "sin(", "func", True), ("cos", "cos(", "func", True)],
+
+            [("tan", "tan(", "func", True), ("DRG", self._toggle_drg, "func_call", True),
+             ("AC", self.clear_expr, "func_call", True), ("(", "(", "func", True), (")", ")", "func", True)],
+        ]
+
+        for row in funcs:
+            rf = ctk.CTkFrame(func_area, fg_color="transparent")
+            rf.pack(fill="x", padx=6, pady=4)
+            for text, action, kind, enabled in row:
+                if kind == "func_call":
+                    cmd = action if enabled else None
+                else:
+                    cmd = (lambda s=action: self.insert_text(s)) if (enabled and isinstance(action, str)) else None
+                b = ctk.CTkButton(rf, text=text, height=36, width=72, corner_radius=10, command=cmd)
+                b.pack(side="left", padx=4)
+                self._style_func_button(b, kind="func" if enabled else "ghost", enabled=enabled)
+                self._func_buttons.append((b, "func" if enabled else "ghost", enabled))
+
+        keypad = ctk.CTkFrame(self.device, corner_radius=14)
+        keypad.pack(fill="x", padx=20, pady=(0, 20))
+
+        row_789 = ["7", "8", "9", "DEL", "="]
+        row_456 = ["4", "5", "6", "*", "/"]
+        row_123 = ["1", "2", "3", "+", "-"]
+        row_bottom = ["0", ".", "*10^x", None, None]
+
+        for row in (row_789, row_456, row_123, row_bottom):
+            rf = ctk.CTkFrame(keypad, fg_color="transparent")
+            rf.pack(fill="x", padx=6, pady=4, expand=True)
+            for label in row:
+                if label is None:
+                    spacer = ctk.CTkFrame(rf, width=72, height=50, fg_color="transparent")
+                    spacer.pack(side="left", padx=4)
+                    continue
+                if label == "DEL":
+                    b = ctk.CTkButton(rf, text=label, height=50, width=80, corner_radius=10, command=self.backspace)
+                    b.pack(side="left", padx=4, expand=True, fill="x")
+                    self._style_op_button(b, kind="accent")
+                    self._op_buttons.append((b, "accent"))
+                elif label == "=":
+                    b = ctk.CTkButton(rf, text=label, height=50, width=80, corner_radius=10, command=self.calculate)
+                    b.pack(side="left", padx=4, expand=True, fill="x")
+                    self._style_op_button(b, kind="equal")
+                    self._op_buttons.append((b, "equal"))
+                elif label in {"+", "-", "*", "/"}:
+                    b = ctk.CTkButton(rf, text=label, height=50, width=80, corner_radius=10,
+                                      command=lambda t=label: self.insert_text(t))
+                    b.pack(side="left", padx=4, expand=True, fill="x")
+                    self._style_op_button(b, kind="op")
+                    self._op_buttons.append((b, "op"))
+                elif label == "*10^x":
+                    b = ctk.CTkButton(rf, text=label, height=50, width=80, corner_radius=10,
+                                      command=lambda: self._press_num_key(label))
+                    b.pack(side="left", padx=4, expand=True, fill="x")
+                    self._style_digit_button(b, label)
+                    self._digit_buttons.append(b)
+                else:
+                    b = ctk.CTkButton(rf, text=label, height=50, width=80, corner_radius=10,
+                                      command=lambda t=label: self._press_num_key(t))
+                    b.pack(side="left", padx=4, expand=True, fill="x")
+                    self._style_digit_button(b, label)
+                    self._digit_buttons.append(b)
+
+        side = ctk.CTkFrame(self.device, corner_radius=14)
+        side.pack(fill="both", padx=20, pady=(0, 12))
+        self._history_container = side
+
+        head = ctk.CTkFrame(side, fg_color="transparent")
+        head.pack(fill="x", padx=6, pady=(6, 2))
+        ctk.CTkLabel(head, text="History").pack(side="left")
+        ctk.CTkButton(head, text="Hide", width=64, command=self._toggle_history).pack(side="right")
+
+        body = ctk.CTkFrame(side, fg_color="transparent")
+        body.pack(fill="x", padx=6, pady=(0, 6))
+        self.hist_list = tk.Listbox(body, height=6, activestyle="dotbox")
+        self.hist_list.pack(side="left", fill="x", expand=True)
+        sb = tk.Scrollbar(body, orient="vertical", command=self.hist_list.yview)
+        self.hist_list.config(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+
+        btns = ctk.CTkFrame(side, fg_color="transparent")
+        btns.pack(fill="x", padx=6, pady=(0, 6))
+        ctk.CTkButton(btns, text="Reuse", width=80, command=self.history_reuse).pack(side="left", padx=2)
+        ctk.CTkButton(btns, text="Delete", width=80, command=self.history_delete).pack(side="left", padx=2)
+        ctk.CTkButton(btns, text="Clear", width=80, command=self.history_clear).pack(side="left", padx=2)
+
+        self.apply_theme(self._palette, self._theme_name)
 
 
-        der_block = ctk.CTkFrame(card, corner_radius=14)
-        der_block.pack(fill="x", padx=16, pady=8)
-        ctk.CTkLabel(der_block, text="需求因子（DER 系数）").pack(anchor="w", padx=12, pady=(10, 2))
-        der_row = ctk.CTkFrame(der_block, fg_color="transparent")
-        der_row.pack(fill="x", padx=12, pady=(0, 8))
+    def _open_pet_calc(self):
+        app = self.winfo_toplevel()
+        if hasattr(app, "open_pet_calculator"):
+            try:
+                app.open_pet_calculator()
+            except Exception:
+                pass
 
-        self.der_slider = ctk.CTkSlider(der_row, from_=self._der_range[0], to=self._der_range[1],
-                                        number_of_steps=20, command=self._on_der_slider)
-        self.der_slider.pack(side="left", fill="x", expand=True, padx=(0, 8))
-        self.der_entry = ctk.CTkEntry(der_row, width=100, textvariable=self.der_var)
-        self.der_entry.pack(side="left")
-        self.der_entry.bind("<Return>", lambda e: self._on_der_entry_commit())
-
-        self.der_range_lbl = ctk.CTkLabel(der_block, text="")
-        self.der_range_lbl.pack(anchor="w", padx=12, pady=(0, 12))
-
-
-        chips_block = ctk.CTkFrame(card, corner_radius=14)#食物类
-        chips_block.pack(fill="x", padx=16, pady=8)
-        ctk.CTkLabel(chips_block, text="食物类型").pack(anchor="w", padx=12, pady=(10, 2))
-        chips = ctk.CTkFrame(chips_block, fg_color="transparent")
-        chips.pack(fill="x", padx=12, pady=(0, 12))
-        self._chip_buttons = []
-        for label in ["猫粮", "罐头", "冻干", "混合"]:
-            btn = ctk.CTkButton(chips, text=label, corner_radius=16, width=80,
-                                command=lambda t=label: self._select_food(t))
-            btn.pack(side="left", padx=6, pady=6)
-            self._chip_buttons.append(btn)
-
-
-
-        brand_block = ctk.CTkFrame(card, corner_radius=14)
-        brand_block.pack(fill="x", padx=16, pady=8)
-        ctk.CTkLabel(brand_block, text="品牌与热量").pack(anchor="w", padx=12, pady=(10, 2))
-        br_row = ctk.CTkFrame(brand_block, fg_color="transparent")
-        br_row.pack(fill="x", padx=12, pady=(0, 12))
-        self.brand_menu = ctk.CTkOptionMenu(br_row,
-                                            values=self._brand_values_for(self.food_var.get()),
-                                            command=self._on_brand_change,
-                                            variable=self.brand_var)
-        self.brand_menu.pack(side="left")
-        ctk.CTkLabel(br_row, text="kcal/100g").pack(side="right")
-        self.kcal_entry = ctk.CTkEntry(br_row, width=120, textvariable=self.kcal_var)
-        self.kcal_entry.pack(side="right", padx=(0, 8))
-
-        # 开始计算
-        btn_row = ctk.CTkFrame(card, fg_color="transparent")
-        btn_row.pack(fill="x", padx=16, pady=(8, 16))
-        self.calc_btn = ctk.CTkButton(btn_row, text="开始计算", command=self._calc)
-        self.calc_btn.pack(fill="x")
-
-
-        self._apply_stage_to_controls()
-        self._restyle_chips()
-
-#以下交互
-    def _on_stage_change(self, _sel=None):
-        stage = self.stage_var.get()
-        if stage not in self._CAT_DER_RANGE:
+    # ---- Styles/helpers ------------------------------------------------------
+    def _style_func_button(self, b, kind, enabled=True):
+        pal = self._palette
+        if not enabled or kind == "ghost":
+            b.configure(state="disabled", fg_color=pal.get("func", "#9AA1A8"),
+                        text_color=pal.get("subtext", "#6C6C70"),
+                        border_width=1, border_color=pal.get("func_border", "#8A9299"))
             return
-        self._der_range = self._CAT_DER_RANGE[stage]
-        self._apply_stage_to_controls()
-
-    def _apply_stage_to_controls(self):
-        lo, hi = self._der_range
-        mid = round((lo + hi) / 2.0, 2)
-        self.der_slider.configure(from_=lo, to=hi)
-        self.der_slider.set(mid)
-        self.der_var.set(f"{mid:.2f}")
-        self.der_range_lbl.configure(text=f"建议范围：{lo:.2f} ～ {hi:.2f}（预设 {mid:.2f}）")
-        self.stage_tip.configure(text=f"{self.stage_var.get()} 需求因子")
-        self._update_preview()
-
-    def _on_der_slider(self, val):
-        self.der_var.set(f"{float(val):.2f}")
-        self._update_preview()
-
-    def _on_der_entry_commit(self):
-        try:
-            v = float(self.der_var.get())
-        except Exception:
-            return
-        lo, hi = self._der_range
-        v = max(lo, min(hi, v))
-        self.der_var.set(f"{v:.2f}")
-        self.der_slider.set(v)
-        self._update_preview()
-
-    def _select_food(self, label):
-        self.food_var.set(label)
-        self._restyle_chips()
-        self.brand_menu.configure(values=self._brand_values_for(label))
-        self.brand_menu.set("自定义")
-        # 典型值
-        typical = {"猫粮": 380, "罐头": 100, "冻干": 520, "混合": 300}
-        self.kcal_var.set(str(typical.get(label, 350)))
-        self._update_preview()
-
-    def _restyle_chips(self):
-        pal = self._palette or {}
-        sel = self.food_var.get()
-        for b in self._chip_buttons:
-            if b.cget("text") == sel:
-                b.configure(
-                    fg_color=pal.get("orange", "#E67E36"),
-                    hover_color=pal.get("orange", "#E67E36"),
-                    text_color=pal.get("accent_text", "#FFFFFF"),
-                    border_width=0
-                )
-            else:
-                b.configure(
-                    fg_color=pal.get("func", "#9AA1A8"),
+        b.configure(fg_color=pal.get("func", "#9AA1A8"),
                     hover_color=pal.get("func_hover", "#8F969E"),
                     text_color=pal.get("text", "#000000"),
-                    border_width=1, border_color=pal.get("func_border", "#8A9299")
-                )
+                    border_width=1, border_color=pal.get("func_border", "#8A9299"))
 
-    def _brand_values_for(self, food):
-        data = self._BRANDS.get(food, {})
-        return ["自定义"] + list(data.keys())
+    def _style_digit_button(self, b, label):
+        pal = self._palette
+        b.configure(fg_color=pal.get("digit", "#FFFFFF"),
+                    hover_color=pal.get("digit_hover", "#F2F2F7"),
+                    text_color=pal.get("digit_text", "#222222"),
+                    border_width=1, border_color=pal.get("digit_border", "#D6D7DA"))
 
-    def _on_brand_change(self, brand_name):
-        food = self.food_var.get()
-        if brand_name and brand_name != "自定义":
-            kc = self._BRANDS.get(food, {}).get(brand_name)
-            if kc:
-                self.kcal_var.set(str(kc))
-        self._update_preview()
-
-    # 计算逻辑 ---------------------------------------------------------------
-    @staticmethod
-    def _calc_rer(weight_kg: float) -> float:
-        # RER = 70 * kg^0.75
-        return 70.0 * (weight_kg ** 0.75)
-
-    def _update_preview(self):
-        # 轻量更新 RER/DER 预览（不改结果行）
-        try:
-            w = float(self.weight_var.get())
-            w = max(0.0, w)
-        except Exception:
-            self.rer_text.set("RER：- kcal/日")
-            self.der_text.set("DER：- kcal/日")
-            return
-        try:
-            der = float(self.der_var.get())
-        except Exception:
-            der = None
-
-        if w <= 0:
-            self.rer_text.set("RER：- kcal/日")
-            self.der_text.set("DER：- kcal/日")
-            return
-
-        rer = self._calc_rer(w)
-        self.rer_text.set(f"RER：{rer:.0f} kcal/日")
-        if der is not None and der > 0:
-            self.der_text.set(f"DER：{(rer*der):.0f} kcal/日")
+    def _style_op_button(self, b, kind):
+        pal = self._palette
+        if kind == "accent":
+            b.configure(fg_color=pal.get("blue", "#3F8CFF"),
+                        hover_color=pal.get("blue", "#3F8CFF"),
+                        text_color=pal.get("accent_text", "#FFFFFF"),
+                        border_width=0)
+        elif kind == "equal":
+            b.configure(fg_color=pal.get("orange", "#E67E36"),
+                        hover_color=pal.get("orange", "#E67E36"),
+                        text_color=pal.get("accent_text", "#FFFFFF"),
+                        border_width=0)
         else:
-            self.der_text.set("DER：- kcal/日")
+            b.configure(fg_color=pal.get("orange_soft", "#E8A26B"),
+                        hover_color=pal.get("orange_soft", "#E8A26B"),
+                        text_color=pal.get("accent_text", "#FFFFFF"),
+                        border_width=0)
 
-    def _calc(self):
-        try:
-            w = float(self.weight_var.get())
-        except Exception:
-            self.result_var.set("请输入你家猫儿or狗儿正确的体重")
+    def _press_num_key(self, label):
+        if label == "*10^x":
+            self.insert_text("*10**(")
+        else:
+            self.insert_text(label)
+
+    def _toggle_drg(self):
+        self.evaluator.deg_mode = not self.evaluator.deg_mode
+        self.mode_lbl.configure(text="D" if self.evaluator.deg_mode else "R")
+
+    def _insert_y_root(self):
+        self.insert_text("root(")
+
+    # ---- Calculator logic ----------------------------------------------------
+    def insert_text(self, text):
+        if not text:
+            return
+        self.expr_entry.insert("insert", text)
+        self.expr_entry.focus_set()
+
+    def clear_expr(self):
+        self.expr_var.set("")
+        self.result_var.set("0")
+
+    def backspace(self):
+        s = self.expr_var.get()
+        if s:
+            self.expr_var.set(s[:-1])
+
+    def calculate(self):
+        expr = self.expr_var.get().strip()
+        if not expr:
             return
         try:
-            der = float(self.der_var.get())
-        except Exception:
-            self.result_var.set("DER系数错误了～")
+            res = self.evaluator.evaluate(expr)
+            self.result_var.set(f"{res}")
+            self.mode_lbl.configure(text=("D" if self.evaluator.deg_mode else "R"))
+            self._add_history(expr, res)
+
+            play_sound("assets/cat.mp3")
+            
+        except Exception as e:
+            self.result_var.set(f"Error: {e}")
+
+    def _add_history(self, expr, res):
+        self.history.append({"expr": expr, "result": res})
+        self.hist_list.insert("end", f"{expr} = {res}")
+        if self.hist_list.size() > 500:
+            self.hist_list.delete(0)
+
+    def history_reuse(self):
+        sel = self.hist_list.curselection()
+        if sel:
+            self.expr_var.set(self.history[sel[0]]["expr"])
+
+    def history_delete(self):
+        sel = self.hist_list.curselection()
+        if sel:
+            idx = sel[0]
+            self.hist_list.delete(idx)
+            del self.history[idx]
+
+    def history_clear(self):
+        self.hist_list.delete(0, "end")
+        self.history.clear()
+
+    def _toggle_history(self):
+        cont = getattr(self, "_history_container", None)
+        if not cont:
             return
-        try:
-            kcal_100g = float(self.kcal_var.get())
-        except Exception:
-            self.result_var.set("热量错误")
-            return
-
-        if w <= 0 or der <= 0 or kcal_100g <= 0:
-            self.result_var.set("输入要正数哦")
-            return
-
-        rer = self._calc_rer(w)
-        der_kcal = rer * der
-        grams = der_kcal / kcal_100g * 100.0
-
-        self.rer_text.set(f"RER：{rer:.0f} kcal/日")
-        self.der_text.set(f"DER：{der_kcal:.0f} kcal/日")
-        self.result_var.set(f"每日建议摄入：{grams:.0f} g（约 {der_kcal:.0f} kcal）")
-
+        if cont.winfo_manager():
+            cont.pack_forget()
+        else:
+            cont.pack(fill="both", padx=20, pady=(0, 12))
 
     def apply_theme(self, pal, name):
-        self._palette = pal or {}
+        self._palette = pal
         self._theme_name = name
+
         try:
-            self.configure(fg_color=pal.get("bg", "#F5F5F5"))
             self.device.configure(fg_color=pal.get("device", "#C8CDD2"))
-            self._card.configure(fg_color=pal.get("device", "#C8CDD2"))
-            self.calc_btn.configure(
-                fg_color=pal.get("orange", "#E67E36"),
-                hover_color=pal.get("orange", "#E67E36"),
-                text_color=pal.get("accent_text", "#FFFFFF"),
+        except Exception:
+            pass
+
+        self.lbl_brand.configure(text_color=pal.get("text", "#000"))
+        self.lbl_sub.configure(text_color=pal.get("subtext", "#6C6C70"))
+        self.res_lbl.configure(text_color=pal.get("text", "#000"))
+        self.mode_lbl.configure(text_color=pal.get("subtext", "#6C6C70"))
+
+        try:
+            self.hist_list.configure(
+                bg=pal.get("surface", "#FFFFFF"),
+                fg=pal.get("text", "#000000"),
+                selectbackground="#DCEBFF" if name != "iOS Dark" else "#133E7C",
+                highlightthickness=1, highlightbackground=pal.get("border", "#C6C6C8"),
+                relief="flat", bd=1
             )
         except Exception:
             pass
+
+        for b, kind, enabled in self._func_buttons:
+            self._style_func_button(b, kind=kind, enabled=enabled)
+        for b in self._digit_buttons:
+            self._style_digit_button(b, "")
+        for b, kind in self._op_buttons:
+            self._style_op_button(b, kind=kind)
