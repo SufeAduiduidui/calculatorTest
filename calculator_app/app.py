@@ -8,6 +8,8 @@ from .ui.convert_plot_page import ConvertPage
 
 from .ui.theme import palette_for
 
+from .ui.pet_calculator_page import PetCaloriePage
+
 #主应用GUI
 class CalculatorApp(ctk.CTk):
     def __init__(self):
@@ -29,11 +31,13 @@ class CalculatorApp(ctk.CTk):
         self._build_navbar()
         self._build_pages()
 
-        self.calc_page = CalculatorPage(self.calc_frame, evaluator=self.evaluator, palette=self._palette, theme_name=self.theme_var.get())
+        self.calc_page = CalculatorPage(self.calc_frame, evaluator=self.evaluator, palette=self._palette,theme_name=self.theme_var.get())
         self.conv_page = ConvertPage(self.conv_frame, evaluator=self.evaluator, palette=self._palette,theme_name=self.theme_var.get())
+        self.pet_page = PetCaloriePage(self.pet_frame, palette=self._palette, theme_name=self.theme_var.get())
 
         self.calc_page.pack(fill="both", expand=True)
         self.conv_page.pack(fill="both", expand=True)
+        self.pet_page.pack(fill="both", expand=True)
 
         self.apply_theme("iOS Light")
         self._show_page("calc")
@@ -77,18 +81,23 @@ class CalculatorApp(ctk.CTk):
 
         self.calc_frame = ctk.CTkFrame(body, corner_radius=12)
         self.conv_frame = ctk.CTkFrame(body, corner_radius=12)
+        self.pet_frame = ctk.CTkFrame(body, corner_radius=12)
 
     def _show_page(self, key):
         self.page_var.set(key)
-        for f in (self.calc_frame, self.conv_frame):
+        for f in (self.calc_frame, self.conv_frame, self.pet_frame):
             f.pack_forget()
         if key == "calc":
             self.calc_frame.pack(fill="both", expand=True, padx=8, pady=8)
             self.page_seg.set("Calculator")
-        else:
+        elif key == "conv":
             self.conv_frame.pack(fill="both", expand=True, padx=8, pady=8)
             self.page_seg.set("Convert&Plot")
+        elif key == "pet":  #不改变顶部分段按钮当前状态
+            self.pet_frame.pack(fill="both", expand=True, padx=8, pady=8)
 
+    def open_pet_calculator(self):
+        self._show_page("pet")
 
     def apply_theme(self, name):
         self.theme_var.set(name)
@@ -118,11 +127,11 @@ class CalculatorApp(ctk.CTk):
             except Exception:
                 pass
             try:
-                self.plot_page.apply_theme(pal, eff)
+                self.conv_page.apply_theme(pal, eff)
             except Exception:
                 pass
             try:
-                self.conv_page.apply_theme(pal, eff)
+                self.pet_page.apply_theme(pal, eff)
             except Exception:
                 pass
 
