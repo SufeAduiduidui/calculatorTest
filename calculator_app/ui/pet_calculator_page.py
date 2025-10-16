@@ -7,7 +7,8 @@ import random
 
 from .pet_widget import PetWidget
 from .dialogs import show_cat_bubble
-from .sound_player import play as play_sound
+
+from .sound_player import play as play_sound, play_music, stop_music
 
 class PetCaloriePage(ctk.CTkFrame):
     _CAT_DER_RANGE: dict[str, tuple[float, float]]
@@ -16,7 +17,7 @@ class PetCaloriePage(ctk.CTkFrame):
         super().__init__(master, corner_radius=12)
         self._palette = palette or {}
         self._theme_name = theme_name
-
+        self._bgm_path = "assets/JiMi_Canon_in_Dmajor.mp3"
 
         self._CAT_DER_RANGE = {
             "发育期": (2.0, 2.5),
@@ -322,6 +323,11 @@ class PetCaloriePage(ctk.CTkFrame):
         self.result_var.set(f"每日建议摄入：{grams:.0f} g（约 {der_kcal:.0f} kcal）")
 
     def on_show(self):
+        try:
+            stop_music(300)#切回页面时保证没有残留的bgm
+        except Exception:
+            pass
+
         if self._angry_modal and self._angry_modal.winfo_exists():
             self._angry_modal.focus_force()
             return
@@ -512,7 +518,15 @@ class PetCaloriePage(ctk.CTkFrame):
             play_sound("assets/maodie_haqi.mp3")
         except Exception:
             pass
+
+        try:
+            self.after(1600, lambda: play_music(self._bgm_path, volume=0.55, loop=True)) #让哈气先出现700ms，再开始循环
+        except Exception:
+            pass
+
         self._show_angry_modal()
+
+
 
     def _show_angry_modal(self):
         if self._angry_modal and self._angry_modal.winfo_exists():
@@ -580,6 +594,10 @@ class PetCaloriePage(ctk.CTkFrame):
         self._angry_modal = modal
 
     def _terminate_application(self):
+        try:
+            stop_music(300)
+        except Exception:
+            pass
         if self._angry_modal and self._angry_modal.winfo_exists():
             try:
                 self._angry_modal.grab_release()
