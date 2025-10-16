@@ -1,5 +1,11 @@
+# -*- coding: utf-8 -*-
+
+#修复：macOS (Aqua): 使用每像素透明窗口（-transparent + systemTransparent），替代 Windows 专用的色键透明（-transparentcolor）可以彻底消除黑色“晕边”。
+
+
 from __future__ import annotations
 
+import sys
 import tkinter as tk
 import tkinter.font as tkfont
 from typing import Mapping, Optional, Tuple
@@ -13,8 +19,19 @@ def _resolve_palette(palette: Optional[Mapping[str, str]]) -> Tuple[str, str, st
     return surface, text, border
 
 
-def _rounded_polygon(canvas: tk.Canvas, x0: float, y0: float, x1: float, y1: float, radius: float,
-                     **kwargs) -> int:
+def _rounded_polygon(
+    canvas: tk.Canvas,
+    x0: float,
+    y0: float,
+    x1: float,
+    y1: float,
+    radius: float,
+    **kwargs
+) -> int:
+    """
+    使用平滑多边形在 Canvas 上画一个带圆角的矩形。
+    注意：smooth=True 会进行抗锯齿，边缘像素会与 Canvas 背景色混合。
+    """
     radius = max(4.0, min(radius, (x1 - x0) / 2, (y1 - y0) / 2))
     points = [
         x0 + radius, y0,
@@ -49,7 +66,7 @@ def show_cat_bubble(
     align_offset: float = 0.0,
     wrap_width: int = 260,
 ) -> Optional[tk.Toplevel]:
-    """Draw a lightweight speech bubble anchored to `anchor_widget`."""
+
     if anchor_widget is None or not anchor_widget.winfo_exists():
         return None
 
@@ -61,29 +78,63 @@ def show_cat_bubble(
         pass
 
     surface_color, text_color, border_color = _resolve_palette(palette)
+
     direction = (direction or "left").lower()
     if direction not in {"left", "right", "up", "down"}:
         direction = "left"
 
-    transparent_color = "#010101"
-    bubble = tk.Toplevel(parent)
+
+    bubble = tk.Toplevel(parent) #创建顶层气泡窗口（无边框、置顶）
     bubble.withdraw()
     bubble.overrideredirect(True)
     bubble.attributes("-topmost", True)
-    bubble.configure(bg=transparent_color, padx=0, pady=0)
-    try:
-        bubble.attributes("-transparentcolor", transparent_color)
-    except tk.TclError:
-        pass
 
-    canvas = tk.Canvas(
-        bubble,
-        bg=transparent_color,
-        highlightthickness=0,
-        bd=0,
-    )
+
+    canvas: tk.Canvas
+
+
+    transparent_color = "#010101"#Wind色键专用的冷门背景色（避免与内容重叠）
+
+
+    if sys.platform == "darwin":#macOS: 使用Aqua的每像素透明
+        try:
+            bubble.attributes("-transparent", True)
+            bubble.configure(bg="systemTransparent", padx=0, pady=0)
+            canvas = tk.Canvas(
+                bubble,
+                bg="systemTransparent",
+                highlightthickness=0,
+                bd=0,
+            )
+        except tk.TclError:
+            bubble.configure(bg=surface_color, padx=0, pady=0)
+            try:
+                bubble.attributes("-alpha", 0.97)
+            except tk.TclError:
+                pass
+            canvas = tk.Canvas(bubble, bg=surface_color, highlightthickness=0, bd=0)
+    else:
+        bubble.configure(bg=transparent_color, padx=0, pady=0)
+        try:
+            bubble.attributes("-transparentcolor", transparent_color)
+            canvas = tk.Canvas(
+                bubble,
+                bg=transparent_color,
+                highlightthickness=0,
+                bd=0,
+            )
+        except tk.TclError:
+            # 不支持色键：退回到不透明或整体 alpha
+            bubble.configure(bg=surface_color, padx=0, pady=0)
+            try:
+                bubble.attributes("-alpha", 0.97)
+            except tk.TclError:
+                pass
+            canvas = tk.Canvas(bubble, bg=surface_color, highlightthickness=0, bd=0)
+
     canvas.pack(fill="both", expand=True)
 
+    # 字体与布局
     font = tkfont.Font(family="Microsoft YaHei UI", size=13)
     padding_x = 22
     padding_y = 16
@@ -104,14 +155,17 @@ def show_cat_bubble(
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
 
+    # 几何：气泡主体与箭头
     arrow_w = 24
     arrow_h = 20
     body_width = text_width + padding_x * 2
     body_height = text_height + padding_y * 2
     radius = min(18.0, body_height / 2, body_width / 2)
+
+    join_overlap = 1.0
     arrow_tip_y: Optional[float] = None
 
-    if direction == "left":
+    if direction == "left":#气泡在目标左侧，箭头朝右（箭头画在底部，尖端朝下）
         total_width = body_width + arrow_w
         total_height = body_height + arrow_h
         body_x0 = 0.0
@@ -121,16 +175,18 @@ def show_cat_bubble(
         base_upper = body_y1 - arrow_h * 0.6
         base_lower = body_y1 - arrow_h * 0.15
         tip_y = body_y1 + arrow_h * 0.6
-        arrow_points = [
-            body_x1 - radius / 2,
+        arrow_points = [#调整 x 让箭头根部略微“扎进”主体，避免拼接处漏底色
+            body_x1 - radius / 2 - join_overlap,
             base_upper,
             body_x1 + arrow_w,
             tip_y,
-            body_x1 - radius / 2,
+            body_x1 - radius / 2 - join_overlap,
             base_lower,
         ]
         arrow_tip_y = tip_y
+
     elif direction == "right":
+        # 气泡在目标右侧，箭头朝左（箭头画在底部，尖端朝下）
         total_width = body_width + arrow_w
         total_height = body_height + arrow_h
         body_x0 = arrow_w
@@ -141,15 +197,17 @@ def show_cat_bubble(
         base_lower = body_y1 - arrow_h * 0.15
         tip_y = body_y1 + arrow_h * 0.6
         arrow_points = [
-            body_x0 + radius / 2,
+            body_x0 + radius / 2 + join_overlap,
             base_lower,
             body_x0 - arrow_w,
             tip_y,
-            body_x0 + radius / 2,
+            body_x0 + radius / 2 + join_overlap,
             base_upper,
         ]
         arrow_tip_y = tip_y
+
     elif direction == "up":
+        # 箭头在上，向上指
         total_width = max(body_width, arrow_w + 12)
         total_height = body_height + arrow_h
         body_x0 = (total_width - body_width) / 2
@@ -159,13 +217,15 @@ def show_cat_bubble(
         mid_x = total_width / 2
         arrow_points = [
             mid_x - arrow_w / 2,
-            arrow_h,
+            arrow_h + join_overlap,
             mid_x,
             0,
             mid_x + arrow_w / 2,
-            arrow_h,
+            arrow_h + join_overlap,
         ]
-    else:  # down
+
+    else:  # "down"
+        # 箭头在下，向下指
         total_width = max(body_width, arrow_w + 12)
         total_height = body_height + arrow_h
         body_x0 = (total_width - body_width) / 2
@@ -176,21 +236,24 @@ def show_cat_bubble(
         tip_y = body_y1 + arrow_h
         arrow_points = [
             mid_x - arrow_w / 2,
-            body_y1,
+            body_y1 - join_overlap,
             mid_x,
             tip_y,
             mid_x + arrow_w / 2,
-            body_y1,
+            body_y1 - join_overlap,
         ]
         arrow_tip_y = tip_y
 
+
     canvas.config(width=total_width, height=total_height)
 
-    text_offset_x = body_x0 + padding_x
+
+    text_offset_x = body_x0 + padding_x    #文本在主体内的偏移
     text_offset_y = body_y0 + padding_y
     canvas.coords(text_id, text_offset_x, text_offset_y)
 
-    body = _rounded_polygon(
+
+    body = _rounded_polygon(#绘制圆角主体
         canvas,
         body_x0,
         body_y0,
@@ -202,7 +265,8 @@ def show_cat_bubble(
         width=1,
     )
     canvas.tag_lower(body, text_id)
-    canvas.create_polygon(
+
+    canvas.create_polygon(#绘制箭头（不平滑，保持直线更利落）
         arrow_points,
         smooth=False,
         fill=surface_color,
@@ -212,7 +276,7 @@ def show_cat_bubble(
 
     bubble.update_idletasks()
 
-    anchor_x = anchor_widget.winfo_rootx()
+    anchor_x = anchor_widget.winfo_rootx()#计算锚点与位置
     anchor_y = anchor_widget.winfo_rooty()
     anchor_w = max(anchor_widget.winfo_width(), 1)
     anchor_h = max(anchor_widget.winfo_height(), 1)
@@ -220,8 +284,11 @@ def show_cat_bubble(
     bubble_w = bubble.winfo_width()
     bubble_h = bubble.winfo_height()
     margin = 12
+
     anchor_center_x = anchor_x + anchor_w / 2
     anchor_center_y = anchor_y + anchor_h / 2
+
+
     if align_widget and align_widget.winfo_exists():
         try:
             align_widget.update_idletasks()
@@ -230,13 +297,15 @@ def show_cat_bubble(
         except Exception:
             pass
 
+
     if direction == "left":
         x = anchor_x - bubble_w - margin
         if arrow_tip_y is not None:
-            target_tip = anchor_y + anchor_h * 0.65
+            target_tip = anchor_y + anchor_h * 0.65 #让箭头尖略低于控件中心
             y = target_tip - arrow_tip_y
         else:
             y = anchor_center_y - bubble_h / 2
+
     elif direction == "right":
         x = anchor_x + anchor_w + margin
         if arrow_tip_y is not None:
@@ -244,9 +313,11 @@ def show_cat_bubble(
             y = target_tip - arrow_tip_y
         else:
             y = anchor_center_y - bubble_h / 2
+
     elif direction == "up":
         x = anchor_center_x - bubble_w / 2
         y = anchor_center_y - bubble_h / 2 - anchor_h / 2 - margin
+
     else:
         x = anchor_center_x - bubble_w / 2
         if arrow_tip_y is not None:
@@ -255,7 +326,8 @@ def show_cat_bubble(
         else:
             y = anchor_center_y + anchor_h / 2 + margin - bubble_h / 2
 
-    try:
+
+    try:#防止出屏
         screen_w = bubble.winfo_screenwidth()
         screen_h = bubble.winfo_screenheight()
         x = max(8, min(x, screen_w - bubble_w - 8))
@@ -265,6 +337,10 @@ def show_cat_bubble(
 
     bubble.geometry(f"{bubble_w}x{bubble_h}+{int(x)}+{int(y)}")
     bubble.deiconify()
+    try:
+        bubble.lift()
+    except Exception:
+        pass
 
     if duration_ms > 0:
         bubble.after(duration_ms, bubble.destroy)
