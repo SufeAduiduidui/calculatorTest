@@ -187,7 +187,30 @@ class PetCaloriePage(ctk.CTkFrame):
                 "Ocanis 火鸡鹌鹑": 91.0,
             },
             "冻干": {
-                "ZIWI Peak": 520.0,
+                "sc 火鸡": 491.0,
+                "sc 兔": 463.0,
+
+                "K9 牛鱼": 476.2,
+                "K9 鸭": 490.5,
+
+                "PR 火鸡": 433.8,
+                "PR 牛鱼": 486.7,
+
+                "VE 鸡饼/粒": 410.5,
+                "VE 牛肉鸡饼/粒": 497.0,
+                "VE 鸡": 380.7,
+
+                "大西北 兔": 387.5,
+
+                "Steve's 火鸡&鸭": 493.0,
+                "Steve's 兔": 352.7,
+
+                "purpose 火鸡": 388.0,
+
+                "Meow 鸡肉三文鱼": 514.9,
+                "Meow 负鼠": 419.9,
+
+                "Nulo 鸡鱼": 443.7,
             },
             "混合": {}
         }
@@ -781,6 +804,7 @@ class PetCaloriePage(ctk.CTkFrame):
             )
         except Exception:
             pass
+
 
 
 
