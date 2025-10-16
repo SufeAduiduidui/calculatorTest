@@ -112,9 +112,15 @@ class PetCaloriePage(ctk.CTkFrame):
 
         w_block = ctk.CTkFrame(card, corner_radius=14)
         w_block.pack(fill="x", padx=16, pady=8)
+
         ctk.CTkLabel(w_block, text="体重").pack(anchor="w", padx=12, pady=(10, 2))
-        w_entry = ctk.CTkEntry(w_block, placeholder_text="单位：kg（例如 4.2）", textvariable=self.weight_var)
-        w_entry.pack(fill="x", padx=12, pady=(0, 12))
+        w_row = ctk.CTkFrame(w_block, fg_color="transparent")
+        w_row.pack(fill="x", padx=12, pady=(0, 12))
+        w_entry = ctk.CTkEntry(w_row, placeholder_text="例如 4.2", textvariable=self.weight_var)
+        w_entry.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(w_row, text="kg").pack(side="right", padx=(8, 0))
+
+        
         self.weight_var.trace_add("write", lambda *_: self._update_preview())
 
 
@@ -628,3 +634,4 @@ class PetCaloriePage(ctk.CTkFrame):
             )
         except Exception:
             pass
+
