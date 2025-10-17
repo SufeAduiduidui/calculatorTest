@@ -1,4 +1,3 @@
-
 import time
 import tkinter as tk
 from typing import Dict, Tuple, Optional
@@ -32,7 +31,6 @@ class PetCaloriePage(ctk.CTkFrame):
 
         self._BRANDS = {
             "猫粮": {
-                # 以下为“品牌 -> {产品: kcal/100g}”嵌套结构（数值均为 kcal/100g，一位小数）
                 "Firstmate菲斯美": {
                     "室内猫": 330.0,
                     "鸡": 353.0,
@@ -184,7 +182,6 @@ class PetCaloriePage(ctk.CTkFrame):
                 },
             },
             "罐头": {
-                # 百利 -> {产品: kcal/100g}
                 "百利": {
                     "鸡肉": 123.9,
                     "鸭肉": 125.0,
@@ -195,7 +192,6 @@ class PetCaloriePage(ctk.CTkFrame):
                     "鸡肉羊肉": 132.5,
                 },
 
-                # Halo
                 "Halo": {
                     "沙丁鱼": 109.6,
                     "鳕鱼": 105.0,
@@ -204,12 +200,10 @@ class PetCaloriePage(ctk.CTkFrame):
                     "小牛肉": 92.6,
                 },
 
-                # 麻利
                 "麻利": {
                     "鸭肉": 112.8,
                 },
 
-                # RAWZ
                 "RAWZ": {
                     "鸡肉鸡肝": 85.9,
                     "鸡肉金枪鱼": 82.7,
@@ -223,7 +217,6 @@ class PetCaloriePage(ctk.CTkFrame):
                     "兔子": 135.8,
                 },
 
-                # 巅峰
                 "巅峰": {
                     "马鲛鱼": 107.5,
                     "奥塔哥山谷": 125.0,
@@ -232,7 +225,6 @@ class PetCaloriePage(ctk.CTkFrame):
                     "鸡肉": 147.4,
                 },
 
-                # Venandi
                 "Venandi": {
                     "养心帝王鲑": 106.0,
                     "牛肉(937)": 93.7,
@@ -241,7 +233,6 @@ class PetCaloriePage(ctk.CTkFrame):
                     "牛肉(1442)": 144.2,
                 },
 
-                # TikiCat黑夜传说
                 "TikiCat黑夜传说": {
                     "鸡肉牛肉": 74.1,
                     "鸡肉三文鱼": 90.0,
@@ -250,7 +241,6 @@ class PetCaloriePage(ctk.CTkFrame):
                     "鸭肉三文鱼": 147.4,
                 },
 
-                # 莉莉圆盒
                 "莉莉圆盒": {
                     "鸡肉羊肉": 76.6,
                     "鸡肉牛肉": 92.0,
@@ -260,7 +250,6 @@ class PetCaloriePage(ctk.CTkFrame):
                     "绵羊肉": 95.0,
                 },
 
-                # Majmjam
                 "Majmjam": {
                     "鸡肉盛夏": 82.3,
                     "家禽": 86.0,
@@ -271,7 +260,6 @@ class PetCaloriePage(ctk.CTkFrame):
                     "鸡肉兔肉": 91.0,
                 },
 
-                # 卡宠
                 "卡宠": {
                     "猪鸡": 92.0,
                     "火鸡胡萝卜": 94.0,
@@ -279,7 +267,6 @@ class PetCaloriePage(ctk.CTkFrame):
                     "鸭": 154.0,
                 },
 
-                # Ocanis
                 "Ocanis": {
                     "羊三文鱼": 159.0,
                     "鸡三文鱼": 132.0,
@@ -326,7 +313,7 @@ class PetCaloriePage(ctk.CTkFrame):
             "混合": {}
         }
 
-        # 变量
+        #变量
         self.weight_var = tk.StringVar(value="")
         self.stage_var = tk.StringVar(value="已结扎")
         self.der_var = tk.StringVar(value="")
@@ -337,7 +324,7 @@ class PetCaloriePage(ctk.CTkFrame):
         self.rer_text = tk.StringVar(value="RER：- kcal/日")
         self.der_text = tk.StringVar(value="DER：- kcal/日")
 
-        # DER 范围缓存
+
         self._der_range = self._CAT_DER_RANGE[self.stage_var.get()]
         self._desk_pet = None
         self._desk_pet_bubble = None
@@ -348,16 +335,15 @@ class PetCaloriePage(ctk.CTkFrame):
         self._warning_modal = None
         self._angry_state = 0
 
-        self._mix_rows = []  # 混合编辑器的3行控件与变量
+        self._mix_rows = [] #混合编辑器的3行控件与变量
         self.mix_details_var = tk.StringVar(value="")
 
-        self._layout_breakpoint = 920  # 宽度小于此值时采用单列布局
+        self._layout_breakpoint = 920 #宽度小于此值时采用单列布局
 
-        # 二级菜单变量（一级：品牌；二级：产品）
         self.brand_primary_var = tk.StringVar(value="自定义")
         self.brand_product_var = tk.StringVar(value="自定义")
-        # 根据 _BRANDS 构建嵌套目录：{分类: {品牌: {产品: kcal/100g}}}
-        self._catalog = self._build_catalog()
+
+        self._catalog = self._build_catalog() #根据 _BRANDS构建嵌套目录：{分类: {品牌: {产品: kcal/100g}}}
         self._started = False #是否点击开始计算
 
         self._build()
@@ -488,7 +474,7 @@ class PetCaloriePage(ctk.CTkFrame):
 
         ctk.CTkLabel(brand_block, text="品牌与热量").pack(anchor="w", padx=12, pady=(10, 2))
 
-        # 一级：品牌
+        #一级：品牌
         br_row1 = ctk.CTkFrame(brand_block, fg_color="透明") if False else ctk.CTkFrame(brand_block, fg_color="transparent")
         br_row1.pack(fill="x", padx=12, pady=(0, 6))
         ctk.CTkLabel(br_row1, text="品牌").pack(side="left")
@@ -501,7 +487,7 @@ class PetCaloriePage(ctk.CTkFrame):
         )
         self.brand_primary_menu.pack(side="left", padx=(6, 0))
 
-        # 二级：产品 + kcal/100g
+        #二级：种类+xx kcal/100g
         br_row2 = ctk.CTkFrame(brand_block, fg_color="透明") if False else ctk.CTkFrame(brand_block, fg_color="transparent")
         br_row2.pack(fill="x", padx=12, pady=(0, 12))
         ctk.CTkLabel(br_row2, text="产品").pack(side="left")
@@ -601,7 +587,7 @@ class PetCaloriePage(ctk.CTkFrame):
 
         self._apply_stage_range_text()
         self._reset_der_to_middle()
-        self._select_food("猫粮")  # 初始化选中与配色
+        self._select_food("猫粮") #初始化选中与配色
 
         self._grid_panel.bind("<Configure>", lambda e: self._reflow_layout())
 
@@ -937,8 +923,7 @@ class PetCaloriePage(ctk.CTkFrame):
         self.result_var.set(f"每日建议：{grams:.0f} g（{der:.0f} kcal）")
 
     def _on_start_press(self):
-        # 先校验体重；缺失则在结果区提示并保持未开始
-        if self._parse_weight() is None:
+        if self._parse_weight() is None:#先校验体重；缺失则在结果区提示并保持未开始
             self._started = False
             self.result_var.set("请输入你的猫儿或狗儿的体重～")
             try:
@@ -947,8 +932,8 @@ class PetCaloriePage(ctk.CTkFrame):
                 pass
             return
 
-        # 标记已开始，然后计算并出结果
-        self._started = True
+
+        self._started = True#标记已开始，然后计算并出结果
         self._update_preview()
         try:
             play_sound("assets/cat.mp3")
@@ -982,8 +967,9 @@ class PetCaloriePage(ctk.CTkFrame):
         except Exception:
             pass
 
-    # 桌宠
-    def _on_desk_pet_click(self):
+    def _on_desk_pet_click(self):  # 耄耋桌宠
+        if self._angry_mode:
+            return
         now = time.time()
         if now - self._desk_pet_last_click > 0.9:
             self._desk_pet_click_count = 0
@@ -997,17 +983,284 @@ class PetCaloriePage(ctk.CTkFrame):
                 pass
             self._desk_pet_bubble = None
 
+        if self._desk_pet_click_count >= 3:
+            self._desk_pet_click_count = 0
+            if self._angry_state == 0:
+                self._show_warning_modal()
+            else:
+                self._trigger_angry_pet()
+            return
+
         tips = [
             "喵~ 记得填体重和选择吃的哦！",
             "再点我几下，看看会发生什么~",
             "今天也要健康吃饭！",
+            "人，我是听话的小猫",
+            "人，你要记得按时喂猫哦",
+            "人，你今天过得怎么样？",
         ]
-        msg = tips[self._desk_pet_click_count % len(tips)]
         self._desk_pet_bubble = show_cat_bubble(
-            self._desk_pet._label, msg, palette=self._palette, direction="left", wrap_width=260
+            self._desk_pet._label, random.choice(tips), palette=self._palette, direction="left", wrap_width=260
         )
         try:
             play_sound("assets/cat.mp3")
+        except Exception:
+            pass
+
+    def on_show(self):
+        try:
+            stop_music(300)  # 切回页面时保证没有残留的bgm
+        except Exception:
+            pass
+
+        if self._angry_modal and self._angry_modal.winfo_exists():
+            self._angry_modal.focus_force()
+            return
+        if self._warning_modal and self._warning_modal.winfo_exists():
+            try:
+                self._warning_modal.grab_release()
+            except Exception:
+                pass
+            self._warning_modal.destroy()
+        self._warning_modal = None
+        if self._desk_pet_bubble and self._desk_pet_bubble.winfo_exists():
+            try:
+                self._desk_pet_bubble.destroy()
+            except Exception:
+                pass
+        self._desk_pet_bubble = None
+        self._desk_pet_click_count = 0
+        self._desk_pet_last_click = 0.0
+        self._angry_mode = False
+        self._angry_state = 0
+
+        self.mix_details_var.set("")
+
+        if self._desk_pet and self._desk_pet.winfo_exists():
+            self._desk_pet.set_enabled(True)
+            self._desk_pet.set_image("assets/maodie_changtai.jpg", size=(72, 72))
+            self._desk_pet_bubble = show_cat_bubble(
+                self._desk_pet._label,
+                "人，你要来喂耄了吗？",
+                palette=self._palette,
+                direction="left",
+                wrap_width=260,
+            )
+
+        try:
+            self.after(0, self._reflow_layout)
+        except Exception:
+            pass
+
+    def _show_warning_modal(self):
+        if self._warning_modal and self._warning_modal.winfo_exists():
+            self._warning_modal.focus_force()
+            return
+        pal = self._palette or {}
+        hover_soft = pal.get("func_hover", pal.get("surface", "#E5E5EA"))
+        border_color = pal.get("border", "#D1D1D6")
+        modal = ctk.CTkToplevel(self)
+        modal.title("哈！")
+        modal.resizable(False, False)
+        modal.configure(fg_color=pal.get("surface", "#FFFFFF"))
+        modal.transient(self.winfo_toplevel())
+        modal.grab_set()
+        modal.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        container = ctk.CTkFrame(modal, fg_color=pal.get("surface", "#FFFFFF"), corner_radius=20)
+        container.pack(fill="both", expand=True, padx=36, pady=28)
+
+        title_lbl = ctk.CTkLabel(
+            container,
+            text="哈！",
+            font=("SF Pro Display", 24, "bold"),
+            text_color=pal.get("text", "#000000"),
+        )
+        title_lbl.pack(anchor="w")
+
+        content_lbl = ctk.CTkLabel(
+            container,
+            text="小猫好像不太能接受你的热情？",
+            font=("Microsoft YaHei UI", 14),
+            text_color=pal.get("subtext", "#6C6C70"),
+            justify="left",
+            wraplength=360,
+        )
+        content_lbl.pack(anchor="w", pady=(14, 24))
+
+        btn_row = ctk.CTkFrame(container, fg_color="transparent")
+        btn_row.pack(fill="x", pady=(0, 8))
+
+        def close_warning():
+            if self._warning_modal and self._warning_modal.winfo_exists():
+                try:
+                    self._warning_modal.grab_release()
+                except Exception:
+                    pass
+                self._warning_modal.destroy()
+            self._warning_modal = None
+
+        def handle_soft():
+            close_warning()
+            self._angry_state = max(self._angry_state, 1)
+
+        def handle_brave():
+            close_warning()
+            self._angry_state = max(self._angry_state, 1)
+            self._trigger_angry_pet()
+
+        btn_soft = ctk.CTkButton(
+            btn_row,
+            text="好吧，我会注意适度撸猫",
+            command=handle_soft,
+            fg_color=pal.get("surface", "#FFFFFF"),
+            hover_color=hover_soft,
+            text_color=pal.get("text", "#000000"),
+            border_width=1,
+            border_color=border_color,
+            corner_radius=16,
+            width=360,
+        )
+        btn_soft.pack(fill="x", pady=(0, 10))
+
+        btn_brave = ctk.CTkButton(
+            btn_row,
+            text="明知山有虎，偏向虎山行！",
+            command=handle_brave,
+            fg_color=pal.get("orange", "#E67E36"),
+            hover_color=pal.get("orange", "#E67E36"),
+            text_color=pal.get("accent_text", "#FFFFFF"),
+            corner_radius=16,
+            width=360,
+        )
+        btn_brave.pack(fill="x")
+
+        modal.update_idletasks()
+        parent = self.winfo_toplevel()
+        try:
+            px = parent.winfo_rootx()
+            py = parent.winfo_rooty()
+            pw = parent.winfo_width()
+            ph = parent.winfo_height()
+        except Exception:
+            px = py = 100
+            pw = ph = 400
+        mw = max(modal.winfo_width(), 460)
+        mh = max(modal.winfo_height(), 240)
+        x = px + (pw - mw) // 2
+        y = py + (ph - mh) // 2
+        modal.geometry(f"{mw}x{mh}+{int(x)}+{int(y)}")
+        btn_soft.focus_set()
+        self._warning_modal = modal
+        self._angry_state = max(self._angry_state, 1)
+
+    def _trigger_angry_pet(self):
+        if self._angry_mode:
+            return
+        if self._warning_modal and self._warning_modal.winfo_exists():
+            try:
+                self._warning_modal.grab_release()
+            except Exception:
+                pass
+            self._warning_modal.destroy()
+        self._warning_modal = None
+        self._angry_state = 2
+        self._angry_mode = True
+        if self._desk_pet and self._desk_pet.winfo_exists():
+            self._desk_pet.set_enabled(False)
+            self._desk_pet.set_image("assets/maodie_haqi.gif", size=(72, 72))
+        try:
+            play_sound("assets/maodie_haqi.mp3")
+        except Exception:
+            pass
+
+        try:
+            self.after(1600, lambda: play_music(self._bgm_path, volume=0.55, loop=True))  # 让哈气先出现700ms，再开始循环
+        except Exception:
+            pass
+
+        self._show_angry_modal()
+
+    def _show_angry_modal(self):
+        if self._angry_modal and self._angry_modal.winfo_exists():
+            self._angry_modal.focus_force()
+            return
+        pal = self._palette or {}
+        modal = ctk.CTkToplevel(self)
+        modal.title("哈！！！")
+        modal.resizable(False, False)
+        modal.configure(fg_color=pal.get("surface", "#FFFFFF"))
+        modal.transient(self.winfo_toplevel())
+        modal.grab_set()
+        modal.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        container = ctk.CTkFrame(modal, fg_color=pal.get("surface", "#FFFFFF"), corner_radius=20)
+        container.pack(fill="both", expand=True, padx=36, pady=30)
+
+        title_lbl = ctk.CTkLabel(
+            container,
+            text="哈！！！",
+            font=("SF Pro Display", 28, "bold"),
+            text_color=pal.get("text", "#000000"),
+        )
+        title_lbl.pack(anchor="w")
+
+        content_lbl = ctk.CTkLabel(
+            container,
+            text="小猫很生气，并撤回了一个计算器",
+            font=("Microsoft YaHei UI", 15),
+            text_color=pal.get("subtext", "#6C6C70"),
+            justify="left",
+            wraplength=380,
+        )
+        content_lbl.pack(anchor="w", pady=(16, 32))
+
+        exit_btn = ctk.CTkButton(
+            container,
+            text="耄好，人坏",
+            command=self._terminate_application,
+            fg_color=pal.get("orange", "#E67E36"),
+            hover_color=pal.get("orange", "#E67E36"),
+            text_color=pal.get("accent_text", "#FFFFFF"),
+            corner_radius=18,
+            height=48,
+            width=360,
+        )
+        exit_btn.pack(fill="x")
+
+        modal.update_idletasks()
+        parent = self.winfo_toplevel()
+        try:
+            px = parent.winfo_rootx()
+            py = parent.winfo_rooty()
+            pw = parent.winfo_width()
+            ph = parent.winfo_height()
+        except Exception:
+            px = py = 100
+            pw = ph = 400
+        mw = max(modal.winfo_width(), 460)
+        mh = max(modal.winfo_height(), 240)
+        x = px + (pw - mw) // 2
+        y = py + (ph - mh) // 2
+        modal.geometry(f"{mw}x{mh}+{int(x)}+{int(y)}")
+        exit_btn.focus_set()
+        self._angry_modal = modal
+
+    def _terminate_application(self):
+        try:
+            stop_music(300)
+        except Exception:
+            pass
+        if self._angry_modal and self._angry_modal.winfo_exists():
+            try:
+                self._angry_modal.grab_release()
+            except Exception:
+                pass
+            self._angry_modal.destroy()
+        self._angry_modal = None
+        root = self.winfo_toplevel()
+        try:
+            root.destroy()
         except Exception:
             pass
 
@@ -1025,10 +1278,8 @@ class PetCaloriePage(ctk.CTkFrame):
 
         self._title_label.configure(text_color=self._palette.get("text", "#000000"))
 
-        # 食物类型 chips 使用橙色选中
         self._style_food_chips()
 
-        # 开始按钮橙色
         try:
             self._start_btn.configure(
                 fg_color=self._palette.get("orange", "#E67E36"),
@@ -1038,4 +1289,6 @@ class PetCaloriePage(ctk.CTkFrame):
             )
         except Exception:
             pass
+
+
 
