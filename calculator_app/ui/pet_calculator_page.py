@@ -10,6 +10,9 @@ from .dialogs import show_cat_bubble
 
 from .sound_player import play as play_sound, play_music, stop_music
 
+from PIL import Image, ImageSequence
+
+
 
 class PetCaloriePage(ctk.CTkFrame):
     _CAT_DER_RANGE: dict[str, tuple[float, float]]
@@ -19,6 +22,23 @@ class PetCaloriePage(ctk.CTkFrame):
         self._palette = palette or {}
         self._theme_name = theme_name
         self._bgm_path = "assets/JiMi_Canon_in_Dmajor.mp3"
+
+        self._angry_overlay_gif_path = "assets/maodie_haqi.gif"#愤怒弹窗放大gif
+        self._angry_zoom_running = False
+        self._angry_zoom_label = None
+        self._angry_zoom_ctkimage = None
+        self._angry_gif_frames = None
+        self._angry_gif_durations = None
+        self._angry_gif_start_time = 0.0
+        self._angry_zoom_start_size = (0, 0)
+        self._angry_zoom_target_size = (0, 0)
+        self._angry_zoom_anim_steps = 36
+        self._angry_zoom_anim_index = 0
+        self._angry_zoom_hold_ms = 5000 #gif放大到位后，继续循环播放ms
+        self._angry_zoom_hold_scheduled = False
+
+        self._angry_overlay_win = None#gif使用的全局遮罩层窗口
+        self._angry_zoom_parent = None#遮罩层
 
         self._CAT_DER_RANGE = {
             "发育期": (2.0, 2.5),
@@ -1246,6 +1266,12 @@ class PetCaloriePage(ctk.CTkFrame):
         exit_btn.focus_set()
         self._angry_modal = modal
 
+        try:#约4～8秒后启动gif彩蛋
+            delay_ms = random.randint(4000, 8000)
+            self.after(delay_ms, self._open_overlay_and_start_zoom_gif)
+        except Exception:
+            pass
+
     def _terminate_application(self):
         try:
             stop_music(300)
@@ -1261,8 +1287,183 @@ class PetCaloriePage(ctk.CTkFrame):
         root = self.winfo_toplevel()
         try:
             root.destroy()
+            ow = getattr(self, "_angry_overlay_win", None)
+            if ow and ow.winfo_exists():
+                try:
+                    ow.destroy()
+                except Exception:
+                    pass
+            self._angry_overlay_win = None
+            self._angry_zoom_parent = None
+
+            self._angry_zoom_running = False
+            self._angry_zoom_label = None
+            self._angry_zoom_ctkimage = None
+            self._angry_gif_frames = None
+            self._angry_gif_durations = None
         except Exception:
             pass
+
+    def _start_angry_zoom_gif(self, modal):
+        self._angry_zoom_hold_scheduled = False
+        self._angry_zoom_parent = modal #modal就是遮罩层
+
+        if not modal or not modal.winfo_exists():#对话框已关则退出
+            return
+
+        path = getattr(self, "_angry_overlay_gif_path", None) or "assets/maodie_haqi.gif"
+        try:
+            im = Image.open(path)
+        except Exception:
+            return
+        frames, durations = [], []
+        try:
+            for frame in ImageSequence.Iterator(im):
+                frames.append(frame.convert("RGBA"))
+                durations.append(int(frame.info.get("duration", 80)))  # ms
+        except Exception:
+            frames = [im.convert("RGBA")]
+            durations = [100]
+        if not frames:
+            return
+
+        self._angry_gif_frames = frames
+        self._angry_gif_durations = [d if d > 0 else 80 for d in durations]
+        self._angry_gif_start_time = time.time()
+        self._angry_zoom_anim_index = 0
+        self._angry_zoom_anim_steps = 36#放大帧数
+
+        modal.update_idletasks()#计算目标尺寸
+        mw, mh = max(1, modal.winfo_width()), max(1, modal.winfo_height())
+        start_side = max(60, min(mw, mh) // 6) #从较小正方形开始
+        self._angry_zoom_start_size = (start_side, start_side)
+        self._angry_zoom_target_size = (mw, mh)
+
+        try:
+            self._angry_zoom_ctkimage = ctk.CTkImage(frames[0], size=self._angry_zoom_start_size)
+        except TypeError:
+            #兼容某些版本需要 light_image=
+            self._angry_zoom_ctkimage = ctk.CTkImage(light_image=frames[0], size=self._angry_zoom_start_size)
+
+        if not self._angry_zoom_label or not self._angry_zoom_label.winfo_exists():
+            self._angry_zoom_label = ctk.CTkLabel(modal, image=self._angry_zoom_ctkimage, text="",
+                                                  fg_color="transparent")
+            self._angry_zoom_label.place(relx=0.5, rely=0.5, anchor="center")
+        else:
+            self._angry_zoom_label.configure(image=self._angry_zoom_ctkimage)
+            self._angry_zoom_label.place(relx=0.5, rely=0.5, anchor="center")
+
+        self._angry_zoom_label.lift()
+        self._angry_zoom_running = True
+        self._animate_angry_zoom_gif()
+
+    def _animate_angry_zoom_gif(self):
+        parent = getattr(self, "_angry_zoom_parent", None)
+        if not parent or not parent.winfo_exists():
+            self._angry_zoom_running = False
+            return
+        if not getattr(self, "_angry_zoom_running", False):
+            return
+        if not self._angry_gif_frames:
+            self._angry_zoom_running = False
+            return
+        if not getattr(self, "_angry_zoom_label", None) or not self._angry_zoom_label.winfo_exists():
+            self._angry_zoom_running = False
+            self._destroy_angry_overlay_win()
+            return
+
+        elapsed_ms = int((time.time() - self._angry_gif_start_time) * 1000)
+        total_ms = sum(self._angry_gif_durations) or 1000
+        t_cycle = elapsed_ms % total_ms
+        acc = 0
+        frame_idx = 0
+        for i, d in enumerate(self._angry_gif_durations):
+            acc += d
+            if t_cycle < acc:
+                frame_idx = i
+                break
+        frame = self._angry_gif_frames[frame_idx]
+
+        anim_i = self._angry_zoom_anim_index#放大动画，到位后循环播gif
+        n = max(1, self._angry_zoom_anim_steps)
+        sw, sh = self._angry_zoom_start_size
+        tw, th = self._angry_zoom_target_size
+
+        if anim_i < n:
+            t = anim_i / n
+            t2 = 1 - (1 - t) ** 3
+            cur_w = int(sw + (tw - sw) * t2)
+            cur_h = int(sh + (th - sh) * t2)
+            self._angry_zoom_anim_index += 1
+        else:
+            cur_w, cur_h = tw, th
+            if not self._angry_zoom_hold_scheduled:#5秒后销毁
+                self._angry_zoom_hold_scheduled = True
+                try:
+                    self.after(self._angry_zoom_hold_ms, self._destroy_angry_overlay_win)
+                except Exception:
+                    pass
+
+        iw, ih = frame.size#等比缩放
+        scale = max(cur_w / iw, cur_h / ih)
+        disp_w = max(1, int(iw * scale))
+        disp_h = max(1, int(ih * scale))
+
+        try:
+            self._angry_zoom_ctkimage = ctk.CTkImage(frame, size=(disp_w, disp_h))
+        except TypeError:
+            self._angry_zoom_ctkimage = ctk.CTkImage(light_image=frame, size=(disp_w, disp_h))
+        self._angry_zoom_label.configure(image=self._angry_zoom_ctkimage)
+        self._angry_zoom_label.lift()
+
+        remainder = max(1, acc - t_cycle)
+        next_ms = max(15, min(40, remainder))
+        if self._angry_zoom_running:
+            self.after(next_ms, self._animate_angry_zoom_gif)
+
+    def _open_overlay_and_start_zoom_gif(self):
+        root = self.winfo_toplevel()
+        if not root or not root.winfo_exists():
+            return
+        try:
+            root.update_idletasks()
+        except Exception:
+            pass
+
+        x, y = root.winfo_rootx(), root.winfo_rooty()
+        w, h = max(1, root.winfo_width()), max(1, root.winfo_height())
+
+        win = ctk.CTkToplevel(root)
+        try:
+            win.overrideredirect(True)
+        except Exception:
+            pass
+        try:
+            win.attributes("-topmost", True)#置顶到最上层，盖住对话框
+        except Exception:
+            pass
+        try:
+            win.transient(root)
+        except Exception:
+            pass
+        try:
+            win.geometry(f"{w}x{h}+{x}+{y}")
+        except Exception:
+            pass
+        win.configure(fg_color=self._palette.get("surface", "#FFFFFF"))
+
+        self._angry_overlay_win = win
+        self._start_angry_zoom_gif(win)
+
+    def _destroy_angry_overlay_win(self):
+        win = getattr(self, "_angry_overlay_win", None)
+        if win and win.winfo_exists():
+            try:
+                win.destroy()
+            except Exception:
+                pass
+        self._angry_overlay_win = None
+        self._angry_zoom_parent = None
 
     # 主题
     def apply_theme(self, pal, name):
@@ -1289,6 +1490,9 @@ class PetCaloriePage(ctk.CTkFrame):
             )
         except Exception:
             pass
+
+
+
 
 
 
