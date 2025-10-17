@@ -10,6 +10,7 @@ from .dialogs import show_cat_bubble
 
 from .sound_player import play as play_sound, play_music, stop_music
 
+
 class PetCaloriePage(ctk.CTkFrame):
     _CAT_DER_RANGE: dict[str, tuple[float, float]]
 
@@ -215,13 +216,13 @@ class PetCaloriePage(ctk.CTkFrame):
             "混合": {}
         }
 
-        #变量
+        # 变量
         self.weight_var = tk.StringVar(value="")
         self.stage_var = tk.StringVar(value="已结扎")
         self.der_var = tk.StringVar(value="")
         self.food_var = tk.StringVar(value="猫粮")
         self.brand_var = tk.StringVar(value="自定义")
-        self.kcal_var = tk.StringVar(value="380") #默认猫粮
+        self.kcal_var = tk.StringVar(value="380")  # 默认猫粮
         self.result_var = tk.StringVar(value="每日建议：- g（- kcal）")
         self.rer_text = tk.StringVar(value="RER：- kcal/日")
         self.der_text = tk.StringVar(value="DER：- kcal/日")
@@ -237,15 +238,15 @@ class PetCaloriePage(ctk.CTkFrame):
         self._warning_modal = None
         self._angry_state = 0
 
-
-        self._mix_rows = []#混合编辑器的3行控件与变量
+        self._mix_rows = []  # 混合编辑器的3行控件与变量
         self.mix_details_var = tk.StringVar(value="")
 
+        self._layout_breakpoint = 920  # 宽度小于此值时采用单列布局
 
         self._build()
         self.apply_theme(self._palette, self._theme_name)
 
-#UI--
+    # UI--
     def _build(self):
         root = self
 
@@ -268,25 +269,51 @@ class PetCaloriePage(ctk.CTkFrame):
             on_click=self._on_desk_pet_click,
         )
         self._desk_pet.pack(padx=6)
-        card = ctk.CTkFrame(self.device, corner_radius=20)
+
+        card = ctk.CTkScrollableFrame(self.device, corner_radius=20) #仅类型变为可滚动
         card.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         self._card = card
 
 
-        res_row = ctk.CTkFrame(card, fg_color="transparent") # 结果显示
-        res_row.pack(fill="x", padx=16, pady=(16, 6))
+        self._grid_panel = ctk.CTkFrame(card, fg_color="transparent")#网格面板
+        self._grid_panel.pack(fill="both", expand=True)
+
+        self._grid_panel.grid_columnconfigure(0, weight=1, uniform="cols")#替换/补充列配置，设置 uniform 保证两列等宽
+        self._grid_panel.grid_columnconfigure(1, weight=1, uniform="cols")
+
+        self._slot_top = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
+        self._slot_left1 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
+        self._slot_right1 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
+        self._slot_left2 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
+        self._slot_right2 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
+
+        self._slot_row3 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")#把原先左右位改为单一槽位，始终占满两列
+
+        self._slot_bottom = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
+
+        # 初始网格位置（将由 _reflow_layout 调整）
+        self._slot_top.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=16, pady=(16, 8))
+        self._slot_left1.grid(row=1, column=0, sticky="nsew", padx=(16, 8), pady=8)
+        self._slot_right1.grid(row=1, column=1, sticky="nsew", padx=(8, 16), pady=8)
+        self._slot_left2.grid(row=2, column=0, sticky="nsew", padx=(16, 8), pady=8)
+        self._slot_right2.grid(row=2, column=1, sticky="nsew", padx=(8, 16), pady=8)
+
+        self._slot_row3.grid(row=3, column=0, columnspan=2, sticky="nsew", padx=16, pady=8)
+
+        self._slot_bottom.grid(row=4, column=0, columnspan=2, sticky="nsew", padx=16, pady=(8, 16))
+
+        res_row = ctk.CTkFrame(self._slot_top, fg_color="transparent")  # 结果显示
+        res_row.pack(fill="x", padx=0, pady=(0, 6))
         res = ctk.CTkEntry(res_row, textvariable=self.result_var, justify="right", state="disabled")
         res.pack(fill="x")
 
-
-        info_row = ctk.CTkFrame(card, fg_color="transparent")
-        info_row.pack(fill="x", padx=16, pady=(2, 8))
+        info_row = ctk.CTkFrame(self._slot_top, fg_color="transparent")
+        info_row.pack(fill="x", padx=0, pady=(0, 2))
         ctk.CTkLabel(info_row, textvariable=self.rer_text).pack(side="left")
         ctk.CTkLabel(info_row, textvariable=self.der_text).pack(side="right")
 
-
-        w_block = ctk.CTkFrame(card, corner_radius=14)
-        w_block.pack(fill="x", padx=16, pady=8)
+        w_block = ctk.CTkFrame(self._slot_left1, corner_radius=14)
+        w_block.pack(fill="x")
 
         ctk.CTkLabel(w_block, text="体重").pack(anchor="w", padx=12, pady=(10, 2))
         w_row = ctk.CTkFrame(w_block, fg_color="transparent")
@@ -295,12 +322,10 @@ class PetCaloriePage(ctk.CTkFrame):
         w_entry.pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(w_row, text="kg").pack(side="right", padx=(8, 0))
 
-        
         self.weight_var.trace_add("write", lambda *_: self._update_preview())
 
-
-        s_block = ctk.CTkFrame(card, corner_radius=14)
-        s_block.pack(fill="x", padx=16, pady=8)
+        s_block = ctk.CTkFrame(self._slot_right1, corner_radius=14)
+        s_block.pack(fill="x")
         ctk.CTkLabel(s_block, text="阶段").pack(anchor="w", padx=12, pady=(10, 2))
         s_row = ctk.CTkFrame(s_block, fg_color="transparent")
         s_row.pack(fill="x", padx=12, pady=(0, 12))
@@ -312,9 +337,8 @@ class PetCaloriePage(ctk.CTkFrame):
         self.stage_tip = ctk.CTkLabel(s_row, text="")
         self.stage_tip.pack(side="right")
 
-
-        der_block = ctk.CTkFrame(card, corner_radius=14)
-        der_block.pack(fill="x", padx=16, pady=8)
+        der_block = ctk.CTkFrame(self._slot_left2, corner_radius=14)
+        der_block.pack(fill="x")
         ctk.CTkLabel(der_block, text="需求因子（DER 系数）").pack(anchor="w", padx=12, pady=(10, 2))
         der_row = ctk.CTkFrame(der_block, fg_color="transparent")
         der_row.pack(fill="x", padx=12, pady=(0, 8))
@@ -329,9 +353,8 @@ class PetCaloriePage(ctk.CTkFrame):
         self.der_range_lbl = ctk.CTkLabel(der_block, text="")
         self.der_range_lbl.pack(anchor="w", padx=12, pady=(0, 12))
 
-
-        chips_block = ctk.CTkFrame(card, corner_radius=14)#食物类
-        chips_block.pack(fill="x", padx=16, pady=8)
+        chips_block = ctk.CTkFrame(self._slot_right2, corner_radius=14)  # 食物类
+        chips_block.pack(fill="x")
         ctk.CTkLabel(chips_block, text="食物类型").pack(anchor="w", padx=12, pady=(10, 2))
         chips = ctk.CTkFrame(chips_block, fg_color="transparent")
         chips.pack(fill="x", padx=12, pady=(0, 12))
@@ -342,10 +365,11 @@ class PetCaloriePage(ctk.CTkFrame):
             btn.pack(side="left", padx=6, pady=6)
             self._chip_buttons.append(btn)
 
+        brand_block = ctk.CTkFrame(self._slot_row3, corner_radius=14)
+        brand_block.pack(fill="x")
 
+        self._brand_block = brand_block #保存引用，便于显隐
 
-        brand_block = ctk.CTkFrame(card, corner_radius=14)
-        brand_block.pack(fill="x", padx=16, pady=8)
         ctk.CTkLabel(brand_block, text="品牌与热量").pack(anchor="w", padx=12, pady=(10, 2))
         br_row = ctk.CTkFrame(brand_block, fg_color="transparent")
         br_row.pack(fill="x", padx=12, pady=(0, 12))
@@ -359,12 +383,15 @@ class PetCaloriePage(ctk.CTkFrame):
         self.kcal_entry.pack(side="right", padx=(0, 8))
 
 
-        self.mix_block = ctk.CTkFrame(card, corner_radius=14)#混合编辑器，仅在选择混合时显示
+        self.mix_block = ctk.CTkFrame(self._slot_row3, corner_radius=14)  # 混合编辑器，仅在选择混合时显示
+        self._mix_block = self.mix_block  # 保存引用，便于显隐
+        self.mix_block.pack_forget()
+
         mix_title = ctk.CTkLabel(self.mix_block, text="混合编辑器（选择 2～3 种，比例为克数占比）")
         mix_title.pack(anchor="w", padx=12, pady=(10, 2))
 
         def _brand_values_for_mix(cat: str):
-            return [""] + list(self._BRANDS.get(cat, {}).keys())#列出已有品牌，并提供空项
+            return [""] + list(self._BRANDS.get(cat, {}).keys())  # 列出已有品牌，并提供空项
 
         self._mix_rows = []
         default_cats = ["罐头", "冻干", "猫粮"]
@@ -376,7 +403,7 @@ class PetCaloriePage(ctk.CTkFrame):
             brand_var = tk.StringVar(value="")
             ratio_var = tk.StringVar(value="")
 
-            ctk.CTkLabel(row, text=f"{i+1}.").pack(side="left", padx=(0, 6))
+            ctk.CTkLabel(row, text=f"{i + 1}.").pack(side="left", padx=(0, 6))
             cat_menu = ctk.CTkOptionMenu(
                 row, variable=cat_var,
                 values=["罐头", "冻干", "猫粮"],
@@ -396,8 +423,7 @@ class PetCaloriePage(ctk.CTkFrame):
             ratio_entry = ctk.CTkEntry(row, textvariable=ratio_var, width=80, placeholder_text="如 50")
             ratio_entry.pack(side="left")
 
-
-            self._mix_rows.append({#保存行控件与变量，供联动与计算使用
+            self._mix_rows.append({  # 保存行控件与变量，供联动与计算使用
                 "row": row,
                 "cat_var": cat_var,
                 "brand_var": brand_var,
@@ -405,38 +431,36 @@ class PetCaloriePage(ctk.CTkFrame):
                 "brand_menu": brand_menu,
             })
 
-        btns = ctk.CTkFrame(self.mix_block, fg_color="transparent")#辅助按钮
+        btns = ctk.CTkFrame(self.mix_block, fg_color="transparent")  # 辅助按钮
         btns.pack(fill="x", padx=12, pady=(4, 8))
         ctk.CTkButton(btns, text="均分", width=80, command=self._mix_equalize).pack(side="left", padx=(0, 8))
         ctk.CTkButton(btns, text="清空", width=80, command=self._mix_clear).pack(side="left")
 
         ctk.CTkLabel(self.mix_block, text="混合明细：").pack(anchor="w", padx=12, pady=(8, 2))
-        ctk.CTkLabel(self.mix_block, textvariable=self.mix_details_var, justify="left", wraplength=420).pack(
-            anchor="w", padx=12, pady=(0, 12)
-        )# 注意：不在此处 pack mix_block；由 _update_mix_visibility() 控制显示
-
-
-
-
+        self._mix_details_lbl = ctk.CTkLabel(
+            self.mix_block, textvariable=self.mix_details_var, justify="left", wraplength=420
+        )
+        self._mix_details_lbl.pack(anchor="w", padx=12, pady=(0, 12))
 
         # 开始计算
-        btn_row = ctk.CTkFrame(card, fg_color="transparent")
-        btn_row.pack(fill="x", padx=16, pady=(8, 16))
+        btn_row = ctk.CTkFrame(self._slot_bottom, fg_color="transparent")
+        btn_row.pack(fill="x", padx=0, pady=(8, 0))
         self.calc_btn = ctk.CTkButton(btn_row, text="开始计算", command=self._calc)
         self.calc_btn.pack(fill="x")
-
 
         self._apply_stage_to_controls()
         self._restyle_chips()
 
-
-        try:#初始化时根据默认类型隐藏/显示混合编辑器
+        try:  # 初始化时根据默认类型隐藏/显示混合编辑器
             self._update_mix_visibility()
         except Exception:
             pass
 
+        # 绑定尺寸变化时自动重排
+        self._grid_panel.bind("<Configure>", lambda e: self._reflow_layout())
+        self.after(0, self._reflow_layout)
 
-#以下交互
+    # 以下交互
     def _on_stage_change(self, _sel=None):
         stage = self.stage_var.get()
         if stage not in self._CAT_DER_RANGE:
@@ -479,11 +503,8 @@ class PetCaloriePage(ctk.CTkFrame):
         self.kcal_var.set(str(typical.get(label, 350)))
         self._update_preview()
 
-        try: #根据是否为“混合”切换ui
-            self._update_mix_visibility()
-        except Exception:
-            pass
-
+        self._update_mix_visibility()#原来重复调用了两次 _update_mix_visibility
+        self._reflow_layout()#切换后立即重排，保证对齐与占位正确
 
     def _restyle_chips(self):
         pal = self._palette or {}
@@ -504,29 +525,27 @@ class PetCaloriePage(ctk.CTkFrame):
                     border_width=1, border_color=pal.get("func_border", "#8A9299")
                 )
 
-    # 混合模式：显隐控制
     def _update_mix_visibility(self):
-        if getattr(self, "mix_block", None) is None:
-            return
-        if self.food_var.get() == "混合":
-            try:#禁用单一品牌输入，避免混淆
-                self.brand_menu.configure(state="disabled")
-                self.kcal_entry.configure(state="disabled")
-            except Exception:
-                pass
-            # 显示混合编辑器
-            if not self.mix_block.winfo_manager():
-                self.mix_block.pack(fill="x", padx=16, pady=8)
-        else:
-            try:#恢复单一品牌输入
-                self.brand_menu.configure(state="normal")
-                self.kcal_entry.configure(state="normal")
-            except Exception:
-                pass
-            if self.mix_block.winfo_manager():#隐藏混合编辑器并清空明细
-                self.mix_block.pack_forget()
-            self.mix_details_var.set("")
+        mixing = self.food_var.get() == "混合"
+        try:#单一品牌输入禁用/启用
+            self.brand_menu.configure(state=("disabled" if mixing else "normal"))
+            self.kcal_entry.configure(state=("disabled" if mixing else "normal"))
+        except Exception:
+            pass
 
+        try:#在同一槽位内切换显示哪个块，保证第三行永远整行对齐
+            if mixing:
+                if self._brand_block.winfo_manager():
+                    self._brand_block.pack_forget()
+                if not self._mix_block.winfo_manager():
+                    self._mix_block.pack(fill="x")
+            else:
+                if self._mix_block.winfo_manager():
+                    self._mix_block.pack_forget()
+                if not self._brand_block.winfo_manager():
+                    self._brand_block.pack(fill="x")
+        except Exception:
+            pass
 
     def _on_mix_cat_change(self, idx: int):
         if idx < 0 or idx >= len(self._mix_rows):
@@ -542,8 +561,7 @@ class PetCaloriePage(ctk.CTkFrame):
         except Exception:
             pass
 
-
-    def _mix_equalize(self):#混合模式：对已选择品牌的项均分比例
+    def _mix_equalize(self):  # 混合模式：对已选择品牌的项均分比例
         active_rows = [r for r in self._mix_rows if r["brand_var"].get()]
         n = len(active_rows)
         if n <= 0:
@@ -552,15 +570,13 @@ class PetCaloriePage(ctk.CTkFrame):
         for r in active_rows:
             r["ratio_var"].set(f"{pct:.1f}")
 
-
-    def _mix_clear(self):#混合模式：清空选择与比例
+    def _mix_clear(self):  # 混合模式：清空选择与比例
         for r in self._mix_rows:
             r["brand_var"].set("")
             r["ratio_var"].set("")
         self.mix_details_var.set("")
 
-
-    def _collect_mix_items(self):#混合模式：收集有效项
+    def _collect_mix_items(self):  # 混合模式：收集有效项
         """返回列表 [(cat, brand, kcal_100g, ratio_float), ...]"""
         items = []
         for r in self._mix_rows:
@@ -620,7 +636,7 @@ class PetCaloriePage(ctk.CTkFrame):
         rer = self._calc_rer(w)
         self.rer_text.set(f"RER：{rer:.0f} kcal/日")
         if der is not None and der > 0:
-            self.der_text.set(f"DER：{(rer*der):.0f} kcal/日")
+            self.der_text.set(f"DER：{(rer * der):.0f} kcal/日")
         else:
             self.der_text.set("DER：- kcal/日")
 
@@ -676,7 +692,7 @@ class PetCaloriePage(ctk.CTkFrame):
             for cat, brand, kcal_i, wi in norm:
                 gi = total_g * wi
                 total_g_sum += gi
-                lines.append(f"- {cat} / {brand}：{gi:.0f} g  （{kcal_i:.1f} kcal/100g，{wi*100:.1f}%）")
+                lines.append(f"- {cat} / {brand}：{gi:.0f} g  （{kcal_i:.1f} kcal/100g，{wi * 100:.1f}%）")
 
             self.rer_text.set(f"RER：{rer:.0f} kcal/日")
             self.der_text.set(f"DER：{der_kcal:.0f} kcal/日")
@@ -684,18 +700,16 @@ class PetCaloriePage(ctk.CTkFrame):
             self.mix_details_var.set("\n".join(lines))
             return
 
-
-        grams = der_kcal / kcal_100g * 100.0#原单一食物逻辑（非混合）
+        grams = der_kcal / kcal_100g * 100.0  # 原单一食物逻辑（非混合）
 
         self.rer_text.set(f"RER：{rer:.0f} kcal/日")
         self.der_text.set(f"DER：{der_kcal:.0f} kcal/日")
         self.result_var.set(f"每日建议摄入：{grams:.0f} g（约 {der_kcal:.0f} kcal）")
         self.mix_details_var.set("")
 
-
     def on_show(self):
         try:
-            stop_music(300)#切回页面时保证没有残留的bgm
+            stop_music(300)  # 切回页面时保证没有残留的bgm
         except Exception:
             pass
 
@@ -722,7 +736,6 @@ class PetCaloriePage(ctk.CTkFrame):
 
         self.mix_details_var.set("")
 
-
         if self._desk_pet and self._desk_pet.winfo_exists():
             self._desk_pet.set_enabled(True)
             self._desk_pet.set_image("assets/maodie_changtai.jpg", size=(72, 72))
@@ -733,6 +746,12 @@ class PetCaloriePage(ctk.CTkFrame):
                 direction="left",
                 wrap_width=260,
             )
+
+        # 初次展示时做一次重排，确保布局正确
+        try:
+            self.after(0, self._reflow_layout)
+        except Exception:
+            pass
 
     def _on_desk_pet_click(self):
         if self._angry_mode:
@@ -895,13 +914,11 @@ class PetCaloriePage(ctk.CTkFrame):
             pass
 
         try:
-            self.after(1600, lambda: play_music(self._bgm_path, volume=0.55, loop=True)) #让哈气先出现700ms，再开始循环
+            self.after(1600, lambda: play_music(self._bgm_path, volume=0.55, loop=True))  # 让哈气先出现700ms，再开始循环
         except Exception:
             pass
 
         self._show_angry_modal()
-
-
 
     def _show_angry_modal(self):
         if self._angry_modal and self._angry_modal.winfo_exists():
@@ -986,9 +1003,6 @@ class PetCaloriePage(ctk.CTkFrame):
         except Exception:
             pass
 
-
-
-
     def apply_theme(self, pal, name):
         self._palette = pal or {}
         self._theme_name = name
@@ -1004,6 +1018,42 @@ class PetCaloriePage(ctk.CTkFrame):
         except Exception:
             pass
 
+    def _reflow_layout(self):
+        try:
+            width = max(1, self._grid_panel.winfo_width())
+        except Exception:
+            width = self._layout_breakpoint
+
+        two_cols = width >= self._layout_breakpoint
+        mixing = (self.food_var.get() == "混合")
+
+        self._slot_top.grid_configure(row=0, column=0, columnspan=2, padx=16, pady=(16, 8), sticky="nsew")
+
+        if two_cols:
+            self._slot_left1.grid_configure(row=1, column=0, columnspan=1, padx=(16, 8), pady=8, sticky="nsew")#显式重置columnspan=1，防止从单列切回双列时残留为2导致覆盖
+            self._slot_right1.grid_configure(row=1, column=1, columnspan=1, padx=(8, 16), pady=8, sticky="nsew")
+        else:
+            self._slot_left1.grid_configure(row=1, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+            self._slot_right1.grid_configure(row=2, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+
+        if two_cols:
+            self._slot_left2.grid_configure(row=2, column=0, columnspan=1, padx=(16, 8), pady=8, sticky="nsew")
+            self._slot_right2.grid_configure(row=2, column=1, columnspan=1, padx=(8, 16), pady=8, sticky="nsew")
+        else:
+            self._slot_left2.grid_configure(row=3, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+            self._slot_right2.grid_configure(row=4, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
 
 
+        row3_index = 3 if two_cols else 5#行3：永远整行
+        self._slot_row3.grid_configure(row=row3_index, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+
+        last_row = 4 if two_cols else 6
+        self._slot_bottom.grid_configure(row=last_row, column=0, columnspan=2, padx=16, pady=(8, 16), sticky="nsew")
+
+        try:# 宽屏时混合明细更宽的换行宽度
+            wrap = max(360, width - 160)
+            if hasattr(self, "_mix_details_lbl"):
+                self._mix_details_lbl.configure(wraplength=wrap)
+        except Exception:
+            pass
 
