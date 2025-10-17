@@ -1,6 +1,7 @@
+
 import time
 import tkinter as tk
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 import customtkinter as ctk
 import math
 import random
@@ -31,186 +32,295 @@ class PetCaloriePage(ctk.CTkFrame):
 
         self._BRANDS = {
             "猫粮": {
-                "Orijen Cat&Kitten": 404.0,
-                "Royal Canin Indoor27": 360.0,
-                "Purina Pro Plan": 390.0,
-                "Firstmate菲斯美 室内猫": 330.0,
-                "麻利无谷 老年猫": 339.0,
-                "欧恩焙鸭": 353.0,
-                "Firstmate菲斯美 鸡": 353.0,
-                "安娜玛特(黄袋、有谷)": 354.0,
-                "美士鸡 室内猫": 357.0,
-                "麻利黑金猎鸟": 358.8,
-                "blackwood珀萃 鸡肉火鸡": 360.8,
-                "活力枫叶": 360.9,
-                "halo健美鸡": 361.0,
-                "纽顿无谷鱼T24": 366.0,
-                "麻利黑金幼猫": 363.8,
-                "荒野盛宴猎食火鸡": 368.9,
-                "绿福摩": 369.6,
-                "nulo火鸡": 369.6,
-                "blackwood珀萃鸡肉鲱鱼": 370.8,
-                "罗斯鸡": 371.0,
-                "渴望低卡": 371.0,
-                "蓝馔无谷鸡肉去毛球": 371.3,
-                "tiki烘焙粮鸡肉鸡蛋": 372.2,
-                "天衡宝": 373.0,
-                "麻利无谷成猫": 373.1,
-                "麻利无谷幼猫": 381.0,
-                "高窦无骨鸡肉": 375.6,
-                "halo敏感肠胃海鲜味": 376.0,
-                "美士鸡 老年猫": 376.0,
-                "纽顿无谷鸡T22": 377.0,
-                "美士鸡 成猫": 378.0,
-                "安娜玛特(红袋、无谷)": 378.0,
-                "欧恩焙鸡": 379.3,
-                "纽翠斯红/鸡肉": 380.0,
-                "Halo鸡肉幼猫": 380.0,
-                "牛油果鸡肉鲜鱼": 382.0,
-                "蓝馔无谷三文鱼成猫": 383.9,
-                "希尔斯 泌尿处方": 385.0,
-                "梅亚奶奶": 385.0,
-                "纽翠斯鱼": 385.5,
-                "金素": 386.0,
-                "Now成猫无谷鸡肉": 386.2,
-                "nulo鸡肉": 386.8,
-                "Openfarm 火鸡": 388.0,
-                "wellnesscore 火鸡": 390.2,
-                "美士鸡幼猫": 392.0,
-                "Now幼猫": 394.7,
-                "蓝馔无骨鸡幼猫": 395.0,
-                "蓝爵幼": 395.4,
-                "纽翠斯金汐五种肉": 395.5,
-                "曙光鸡": 396.0,
-                "Wellness core 原味": 397.7,
-                "爱肯拿鱼": 408.0,
-                "爱肯拿鸡": 410.0,
-                "NG鸡": 410.0,
-                "渴望鱼": 412.0,
-                "渴望红肉": 412.0,
-                "百利无谷鸡": 415.0,
-                "渴望鸡": 416.0,
-                "尊达鸡肉鱼三文鱼幼猫": 416.2,
-                "法米娜 猪、鸭": 419.7,
-                "法米娜 鸡、魚": 420.4,
-                "Go九种肉": 429.8,
-                "百利无谷鸭": 439.7,
-                "加卉鸡": 440.0,
-                "草本魔力 鱼肉": 441.8,
-                "Ga三种鱼": 444.4,
-                "百利高蛋白": 447.0,
-                "德金 鹿肉": 447.4,
-                "草本魔力 鸡肉": 448.0,
-                "塞伦盖蒂 牛羊无谷": 457.7,
-                "尊达火鸡成猫": 457.7,
-                "Ga鸡肉": 460.4,
+                # 以下为“品牌 -> {产品: kcal/100g}”嵌套结构（数值均为 kcal/100g，一位小数）
+                "Firstmate菲斯美": {
+                    "室内猫": 330.0,
+                    "鸡": 353.0,
+                },
+                "麻利": {
+                    "无谷老年猫": 339.0,
+                    "黑金猎鸟": 358.8,
+                    "黑金幼猫": 363.8,
+                    "无谷成猫": 373.1,
+                    "无谷幼猫(3755)": 375.5,
+                    "无谷幼猫(3810)": 381.0,
+                },
+                "欧恩焙": {
+                    "鸭": 353.0,
+                    "鸡": 379.3,
+                },
+                "安娜玛特": {
+                    "(黄袋、有谷)": 354.0,
+                    "(红袋、无谷)": 378.0,
+                },
+                "美士": {
+                    "鸡室内猫": 357.0,
+                    "鸡老年猫": 376.0,
+                    "鸡成猫": 378.0,
+                    "鸡幼猫": 392.0,
+                },
+                "blackwood": {
+                    "珀萃 鸡肉火鸡": 360.8,
+                    "珀萃 鸡肉鲱鱼": 370.8,
+                },
+                "活力枫叶": {
+                    "未标注": 360.9,
+                },
+                "Halo": {
+                    "健美鸡": 361.0,
+                    "敏感肠胃海鲜味": 376.0,
+                    "鸡肉幼猫": 380.0,
+                },
+                "纽顿": {
+                    "无谷鱼T24": 366.0,
+                    "无谷鸡T22": 377.0,
+                },
+                "荒野盛宴": {
+                    "猎食火鸡": 368.9,
+                },
+                "绿福摩": {
+                    "未标注": 369.6,
+                },
+                "Nulo": {
+                    "火鸡": 369.6,
+                    "鸡肉": 386.8,
+                },
+                "罗斯": {
+                    "鸡": 371.0,
+                },
+                "渴望": {
+                    "低卡": 371.0,
+                    "鱼": 412.0,
+                    "红肉": 412.0,
+                    "鸡": 416.0,
+                },
+                "蓝馔": {
+                    "无谷鸡肉去毛球": 371.3,
+                    "无谷三文鱼成猫": 383.9,
+                    "无骨鸡幼猫": 395.0,
+                },
+                "Tiki": {
+                    "烘焙粮鸡肉鸡蛋": 372.2,
+                },
+                "天衡宝": {
+                    "未标注": 373.0,
+                },
+                "高窦": {
+                    "无骨鸡肉": 375.6,
+                },
+                "牛油果": {
+                    "鸡肉鲜鱼": 382.0,
+                },
+                "希尔斯": {
+                    "泌尿处方": 385.0,
+                },
+                "梅亚奶奶": {
+                    "未标注": 385.0,
+                },
+                "纽翠斯": {
+                    "红/鸡肉": 380.0,
+                    "鱼": 385.5,
+                    "金汐五种肉": 395.5,
+                },
+                "金素": {
+                    "未标注": 386.0,
+                },
+                "Now": {
+                    "成猫无谷鸡肉": 386.2,
+                    "幼猫": 394.7,
+                },
+                "Open Farm": {
+                    "火鸡": 388.0,
+                },
+                "Wellness Core": {
+                    "火鸡": 390.2,
+                    "原味": 397.7,
+                },
+                "蓝爵": {
+                    "幼": 395.4,
+                },
+                "曙光": {
+                    "鸡": 396.0,
+                },
+                "爱肯拿": {
+                    "鱼": 408.0,
+                    "鸡": 410.0,
+                },
+                "NG": {
+                    "鸡": 410.0,
+                },
+                "百利": {
+                    "无谷鸡": 415.0,
+                    "无谷鸭": 439.7,
+                    "高蛋白": 447.0,
+                },
+                "尊达": {
+                    "鸡肉鱼三文鱼幼猫": 416.2,
+                    "火鸡成猫": 457.7,
+                },
+                "法米娜": {
+                    "猪、鸭": 419.7,
+                    "鸡、魚": 420.4,
+                },
+                "Go": {
+                    "九种肉": 429.8,
+                },
+                "加卉": {
+                    "鸡": 440.0,
+                },
+                "草本魔力": {
+                    "鱼肉": 441.8,
+                    "鸡肉": 448.0,
+                },
+                "Ga": {
+                    "三种鱼": 444.4,
+                    "鸡肉": 460.4,
+                },
+                "德金": {
+                    "鹿肉": 447.4,
+                },
+                "塞伦盖蒂": {
+                    "牛羊无谷": 457.7,
+                },
             },
             "罐头": {
-                # 百利
-                "百利 鸡肉": 123.9,
-                "百利 鸭肉": 125.0,
-                "百利 三文鱼": 105.7,
-                "百利 兔肉": 94.4,
-                "百利 羊肉": 132.2,
-                "百利 鹿肉马鲛鱼羊肉": 127.8,
-                "百利 鸡肉羊肉": 132.5,
+                # 百利 -> {产品: kcal/100g}
+                "百利": {
+                    "鸡肉": 123.9,
+                    "鸭肉": 125.0,
+                    "三文鱼": 105.7,
+                    "兔肉": 94.4,
+                    "羊肉": 132.2,
+                    "鹿肉马鲛鱼羊肉": 127.8,
+                    "鸡肉羊肉": 132.5,
+                },
 
                 # Halo
-                "Halo 沙丁鱼": 109.6,
-                "Halo 鳕鱼": 105.0,
-                "Halo 鸡肉鹌鹑": 82.9,
-                "Halo 牛肉鮭色": 94.5,
-                "Halo 小牛肉": 92.6,
+                "Halo": {
+                    "沙丁鱼": 109.6,
+                    "鳕鱼": 105.0,
+                    "鸡肉鹌鹑": 82.9,
+                    "牛肉鮭色": 94.5,
+                    "小牛肉": 92.6,
+                },
 
                 # 麻利
-                "麻利 鸭肉": 112.8,
+                "麻利": {
+                    "鸭肉": 112.8,
+                },
 
                 # RAWZ
-                "RAWZ 鸡肉鸡肝": 85.9,
-                "RAWZ 鸡肉金枪鱼": 82.7,
-                "RAWZ 鸡胸南瓜": 82.7,
-                "RAWZ 金枪鱼鲑鱼": 85.9,
-                "RAWZ 鸡肉": 83.3,
-                "RAWZ 鸡胸鸭肉": 87.2,
-                "RAWZ 鹿肉马鲛鱼羊肉": 120.0,
-                "RAWZ 东海角": 150.0,
-                "RAWZ 羊肉": 121.1,
-                "RAWZ 兔子": 135.8,
+                "RAWZ": {
+                    "鸡肉鸡肝": 85.9,
+                    "鸡肉金枪鱼": 82.7,
+                    "鸡胸南瓜": 82.7,
+                    "金枪鱼鲑鱼": 85.9,
+                    "鸡肉": 83.3,
+                    "鸡胸鸭肉": 87.2,
+                    "鹿肉马鲛鱼羊肉": 120.0,
+                    "东海角": 150.0,
+                    "羊肉": 121.1,
+                    "兔子": 135.8,
+                },
 
                 # 巅峰
-                "巅峰 马鲛鱼": 107.5,
-                "巅峰 奥塔哥山谷": 125.0,
-                "巅峰 鸡": 94.0,
-                "巅峰 牛肉": 112.3,
-                "巅峰 鸡肉": 147.4,
+                "巅峰": {
+                    "马鲛鱼": 107.5,
+                    "奥塔哥山谷": 125.0,
+                    "鸡": 94.0,
+                    "牛肉": 112.3,
+                    "鸡肉": 147.4,
+                },
 
                 # Venandi
-                "Venandi 养心帝王鲑": 106.0,
-                "Venandi 牛肉(937)": 93.7,
-                "Venandi 鸡肉鸭肉": 73.2,
-                "Venandi 手撕鸡肉": 85.0,
-                "Venandi 牛肉(1442)": 144.2,
+                "Venandi": {
+                    "养心帝王鲑": 106.0,
+                    "牛肉(937)": 93.7,
+                    "鸡肉鸭肉": 73.2,
+                    "手撕鸡肉": 85.0,
+                    "牛肉(1442)": 144.2,
+                },
 
                 # TikiCat黑夜传说
-                "TikiCat黑夜传说 鸡肉牛肉": 74.1,
-                "TikiCat黑夜传说 鸡肉三文鱼": 90.0,
-                "TikiCat黑夜传说 火鸡鲑鱼": 98.2,
-                "TikiCat黑夜传说 马肉": 96.0,
-                "TikiCat黑夜传说 鸭肉三文鱼": 147.4,
+                "TikiCat黑夜传说": {
+                    "鸡肉牛肉": 74.1,
+                    "鸡肉三文鱼": 90.0,
+                    "火鸡鲑鱼": 98.2,
+                    "马肉": 96.0,
+                    "鸭肉三文鱼": 147.4,
+                },
 
                 # 莉莉圆盒
-                "莉莉圆盒 鸡肉羊肉": 76.6,
-                "莉莉圆盒 鸡肉牛肉": 92.0,
-                "莉莉圆盒 鸭肉南瓜": 93.6,
-                "莉莉圆盒 小牛肉": 99.5,
-                "莉莉圆盒 牛肉": 149.0,
-                "莉莉圆盒 绵羊肉": 95.0,
+                "莉莉圆盒": {
+                    "鸡肉羊肉": 76.6,
+                    "鸡肉牛肉": 92.0,
+                    "鸭肉南瓜": 93.6,
+                    "小牛肉": 99.5,
+                    "牛肉": 149.0,
+                    "绵羊肉": 95.0,
+                },
 
                 # Majmjam
-                "Majmjam 鸡肉盛夏": 82.3,
-                "Majmjam 家禽": 86.0,
-                "Majmjam 鸡肉南瓜": 94.6,
-                "Majmjam 火鸡胎贝": 90.7,
-                "Majmjam 鹿鸡": 127.0,
-                "Majmjam 山羊": 127.0,
-                "Majmjam 鸡肉兔肉": 91.0,
+                "Majmjam": {
+                    "鸡肉盛夏": 82.3,
+                    "家禽": 86.0,
+                    "鸡肉南瓜": 94.6,
+                    "火鸡胎贝": 90.7,
+                    "鹿鸡": 127.0,
+                    "山羊": 127.0,
+                    "鸡肉兔肉": 91.0,
+                },
 
                 # 卡宠
-                "卡宠 猪鸡": 92.0,
-                "卡宠 火鸡胡萝卜": 94.0,
-                "卡宠 负鼠鸡": 124.0,
-                "卡宠 鸭": 154.0,
+                "卡宠": {
+                    "猪鸡": 92.0,
+                    "火鸡胡萝卜": 94.0,
+                    "负鼠鸡": 124.0,
+                    "鸭": 154.0,
+                },
 
                 # Ocanis
-                "Ocanis 羊三文鱼": 159.0,
-                "Ocanis 鸡三文鱼": 132.0,
-                "Ocanis 火鸡鹌鹑": 91.0,
+                "Ocanis": {
+                    "羊三文鱼": 159.0,
+                    "鸡三文鱼": 132.0,
+                    "火鸡鹌鹑": 91.0,
+                },
             },
             "冻干": {
-                "sc 火鸡": 491.0,
-                "sc 兔": 463.0,
-
-                "K9 牛鱼": 476.2,
-                "K9 鸭": 490.5,
-
-                "PR 火鸡": 433.8,
-                "PR 牛鱼": 486.7,
-
-                "VE 鸡饼/粒": 410.5,
-                "VE 牛肉鸡饼/粒": 497.0,
-                "VE 鸡": 380.7,
-
-                "大西北 兔": 387.5,
-
-                "Steve's 火鸡&鸭": 493.0,
-                "Steve's 兔": 352.7,
-
-                "purpose 火鸡": 388.0,
-
-                "Meow 鸡肉三文鱼": 514.9,
-                "Meow 负鼠": 419.9,
-
-                "Nulo 鸡鱼": 443.7,
+                "sc": {
+                    "火鸡": 491.0,
+                    "兔": 463.0,
+                },
+                "K9": {
+                    "牛鱼": 476.2,
+                    "鸭": 490.5,
+                },
+                "PR": {
+                    "火鸡": 433.8,
+                    "牛鱼": 486.7,
+                },
+                "VE": {
+                    "鸡饼/粒": 410.5,
+                    "牛肉鸡饼/粒": 497.0,
+                    "鸡": 380.7,
+                },
+                "大西北": {
+                    "兔": 387.5,
+                },
+                "Steve's": {
+                    "火鸡&鸭": 493.0,
+                    "兔": 352.7,
+                },
+                "purpose": {
+                    "火鸡": 388.0,
+                },
+                "Meow": {
+                    "鸡肉三文鱼": 514.9,
+                    "负鼠": 419.9,
+                },
+                "Nulo": {
+                    "鸡鱼": 443.7,
+                },
             },
 
             "混合": {}
@@ -243,6 +353,13 @@ class PetCaloriePage(ctk.CTkFrame):
 
         self._layout_breakpoint = 920  # 宽度小于此值时采用单列布局
 
+        # 二级菜单变量（一级：品牌；二级：产品）
+        self.brand_primary_var = tk.StringVar(value="自定义")
+        self.brand_product_var = tk.StringVar(value="自定义")
+        # 根据 _BRANDS 构建嵌套目录：{分类: {品牌: {产品: kcal/100g}}}
+        self._catalog = self._build_catalog()
+        self._started = False #是否点击开始计算
+
         self._build()
         self.apply_theme(self._palette, self._theme_name)
 
@@ -253,7 +370,7 @@ class PetCaloriePage(ctk.CTkFrame):
         self.device = ctk.CTkFrame(root, corner_radius=24)
         self.device.pack(fill="both", expand=True, padx=40, pady=20)
 
-        top = ctk.CTkFrame(self.device, fg_color="transparent")
+        top = ctk.CTkFrame(self.device, fg_color="透明") if False else ctk.CTkFrame(self.device, fg_color="transparent")
         top.pack(side="top", fill="x", padx=20, pady=(16, 8))
         left = ctk.CTkFrame(top, fg_color="transparent")
         left.pack(side="left", fill="both", expand=True)
@@ -274,7 +391,6 @@ class PetCaloriePage(ctk.CTkFrame):
         card.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         self._card = card
 
-
         self._grid_panel = ctk.CTkFrame(card, fg_color="transparent")#网格面板
         self._grid_panel.pack(fill="both", expand=True)
 
@@ -284,7 +400,7 @@ class PetCaloriePage(ctk.CTkFrame):
         self._slot_top = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
         self._slot_left1 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
         self._slot_right1 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
-        self._slot_left2 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
+        self._slot_left2 = ctk.CTkTFrame(self._grid_panel, fg_color="transparent") if False else ctk.CTkFrame(self._grid_panel, fg_color="transparent")
         self._slot_right2 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")
 
         self._slot_row3 = ctk.CTkFrame(self._grid_panel, fg_color="transparent")#把原先左右位改为单一槽位，始终占满两列
@@ -322,7 +438,7 @@ class PetCaloriePage(ctk.CTkFrame):
         w_entry.pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(w_row, text="kg").pack(side="right", padx=(8, 0))
 
-        self.weight_var.trace_add("write", lambda *_: self._update_preview())
+        self.weight_var.trace_add("write", lambda *_: (setattr(self, "_started", False), self._update_preview()))
 
         s_block = ctk.CTkFrame(self._slot_right1, corner_radius=14)
         s_block.pack(fill="x")
@@ -365,24 +481,44 @@ class PetCaloriePage(ctk.CTkFrame):
             btn.pack(side="left", padx=6, pady=6)
             self._chip_buttons.append(btn)
 
+        # 品牌与热量（二级菜单）
         brand_block = ctk.CTkFrame(self._slot_row3, corner_radius=14)
         brand_block.pack(fill="x")
-
         self._brand_block = brand_block #保存引用，便于显隐
 
         ctk.CTkLabel(brand_block, text="品牌与热量").pack(anchor="w", padx=12, pady=(10, 2))
-        br_row = ctk.CTkFrame(brand_block, fg_color="transparent")
-        br_row.pack(fill="x", padx=12, pady=(0, 12))
-        self.brand_menu = ctk.CTkOptionMenu(br_row,
-                                            values=self._brand_values_for(self.food_var.get()),
-                                            command=self._on_brand_change,
-                                            variable=self.brand_var)
-        self.brand_menu.pack(side="left")
-        ctk.CTkLabel(br_row, text="kcal/100g").pack(side="right")
-        self.kcal_entry = ctk.CTkEntry(br_row, width=120, textvariable=self.kcal_var)
+
+        # 一级：品牌
+        br_row1 = ctk.CTkFrame(brand_block, fg_color="透明") if False else ctk.CTkFrame(brand_block, fg_color="transparent")
+        br_row1.pack(fill="x", padx=12, pady=(0, 6))
+        ctk.CTkLabel(br_row1, text="品牌").pack(side="left")
+        self.brand_primary_menu = ctk.CTkOptionMenu(
+            br_row1,
+            variable=self.brand_primary_var,
+            values=["自定义"],
+            command=self._on_brand_primary_change,
+            width=220
+        )
+        self.brand_primary_menu.pack(side="left", padx=(6, 0))
+
+        # 二级：产品 + kcal/100g
+        br_row2 = ctk.CTkFrame(brand_block, fg_color="透明") if False else ctk.CTkFrame(brand_block, fg_color="transparent")
+        br_row2.pack(fill="x", padx=12, pady=(0, 12))
+        ctk.CTkLabel(br_row2, text="产品").pack(side="left")
+        self.brand_product_menu = ctk.CTkOptionMenu(
+            br_row2,
+            variable=self.brand_product_var,
+            values=["自定义"],
+            command=self._on_brand_product_change,
+            width=260
+        )
+        self.brand_product_menu.pack(side="left", padx=(6, 0))
+
+        ctk.CTkLabel(br_row2, text="kcal/100g").pack(side="right")
+        self.kcal_entry = ctk.CTkEntry(br_row2, width=120, textvariable=self.kcal_var)
         self.kcal_entry.pack(side="right", padx=(0, 8))
 
-
+        # 混合编辑器：支持二级菜单（品牌/产品）
         self.mix_block = ctk.CTkFrame(self._slot_row3, corner_radius=14)  # 混合编辑器，仅在选择混合时显示
         self._mix_block = self.mix_block  # 保存引用，便于显隐
         self.mix_block.pack_forget()
@@ -390,17 +526,15 @@ class PetCaloriePage(ctk.CTkFrame):
         mix_title = ctk.CTkLabel(self.mix_block, text="混合编辑器（选择 2～3 种，比例为克数占比）")
         mix_title.pack(anchor="w", padx=12, pady=(10, 2))
 
-        def _brand_values_for_mix(cat: str):
-            return [""] + list(self._BRANDS.get(cat, {}).keys())  # 列出已有品牌，并提供空项
-
         self._mix_rows = []
         default_cats = ["罐头", "冻干", "猫粮"]
         for i in range(3):
-            row = ctk.CTkFrame(self.mix_block, fg_color="transparent")
+            row = ctk.CTkFrame(self.mix_block, fg_color="透明") if False else ctk.CTkFrame(self.mix_block, fg_color="transparent")
             row.pack(fill="x", padx=12, pady=6)
 
             cat_var = tk.StringVar(value=default_cats[i % len(default_cats)])
             brand_var = tk.StringVar(value="")
+            prod_var = tk.StringVar(value="")
             ratio_var = tk.StringVar(value="")
 
             ctk.CTkLabel(row, text=f"{i + 1}.").pack(side="left", padx=(0, 6))
@@ -414,348 +548,442 @@ class PetCaloriePage(ctk.CTkFrame):
 
             brand_menu = ctk.CTkOptionMenu(
                 row, variable=brand_var,
-                values=_brand_values_for_mix(cat_var.get()),
-                width=260
+                values=[""],
+                width=180,
+                command=lambda _v, idx=i: self._on_mix_brand_change(idx),
             )
             brand_menu.pack(side="left", padx=(0, 8))
 
-            ctk.CTkLabel(row, text="比例 %").pack(side="left", padx=(0, 6))
-            ratio_entry = ctk.CTkEntry(row, textvariable=ratio_var, width=80, placeholder_text="如 50")
+            prod_menu = ctk.CTkOptionMenu(
+                row, variable=prod_var,
+                values=[""],
+                width=220,
+                command=lambda _v, idx=i: self._on_mix_product_change(idx),
+            )
+            prod_menu.pack(side="left", padx=(0, 8))
+
+            ctk.CTkLabel(row, text="比例(%)").pack(side="left", padx=(12, 6))
+            ratio_entry = ctk.CTkEntry(row, textvariable=ratio_var, width=100)
             ratio_entry.pack(side="left")
 
-            self._mix_rows.append({  # 保存行控件与变量，供联动与计算使用
-                "row": row,
-                "cat_var": cat_var,
-                "brand_var": brand_var,
-                "ratio_var": ratio_var,
-                "brand_menu": brand_menu,
-            })
+            ratio_var.trace_add("write", lambda *_: (setattr(self, "_started", False), self._update_preview()))
 
-        btns = ctk.CTkFrame(self.mix_block, fg_color="transparent")  # 辅助按钮
-        btns.pack(fill="x", padx=12, pady=(4, 8))
-        ctk.CTkButton(btns, text="均分", width=80, command=self._mix_equalize).pack(side="left", padx=(0, 8))
-        ctk.CTkButton(btns, text="清空", width=80, command=self._mix_clear).pack(side="left")
+            self._mix_rows.append(
+                {
+                    "frame": row,
+                    "cat_var": cat_var,
+                    "brand_var": brand_var,
+                    "prod_var": prod_var,
+                    "ratio_var": ratio_var,
+                    "cat_menu": cat_menu,
+                    "brand_menu": brand_menu,
+                    "prod_menu": prod_menu,
+                    "ratio_entry": ratio_entry,
+                }
+            )
+            self._refresh_mix_brand_values(i)
+            self._refresh_mix_product_values(i)
 
-        ctk.CTkLabel(self.mix_block, text="混合明细：").pack(anchor="w", padx=12, pady=(8, 2))
-        self._mix_details_lbl = ctk.CTkLabel(
-            self.mix_block, textvariable=self.mix_details_var, justify="left", wraplength=420
-        )
-        self._mix_details_lbl.pack(anchor="w", padx=12, pady=(0, 12))
+        mix_btns = ctk.CTkFrame(self.mix_block, fg_color="透明") if False else ctk.CTkFrame(self.mix_block, fg_color="transparent")
+        mix_btns.pack(fill="x", padx=12, pady=(0, 8))
+        ctk.CTkButton(mix_btns, text="均分", width=80, command=self._mix_equalize).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(mix_btns, text="清空", width=80, command=self._mix_clear).pack(side="left", padx=(0, 6))
 
-        # 开始计算
-        btn_row = ctk.CTkFrame(self._slot_bottom, fg_color="transparent")
-        btn_row.pack(fill="x", padx=0, pady=(8, 0))
-        self.calc_btn = ctk.CTkButton(btn_row, text="开始计算", command=self._calc)
-        self.calc_btn.pack(fill="x")
+        ctk.CTkLabel(self.mix_block, text="混合明细：").pack(anchor="w", padx=12, pady=(0, 2))
+        mix_details = ctk.CTkLabel(self.mix_block, textvariable=self.mix_details_var, justify="left")
+        mix_details.pack(anchor="w", padx=12, pady=(0, 12))
 
-        self._apply_stage_to_controls()
-        self._restyle_chips()
+        # 底部操作：开始计算
+        bottom = ctk.CTkFrame(self._slot_bottom, fg_color="透明") if False else ctk.CTkFrame(self._slot_bottom, fg_color="transparent")
+        bottom.pack(fill="x", padx=0, pady=(0, 0))
+        self._start_btn = ctk.CTkButton(bottom, text="开始计算", height=40, command=self._on_start_press)
+        self._start_btn.pack(fill="x", padx=12, pady=(6, 6))
 
-        try:  # 初始化时根据默认类型隐藏/显示混合编辑器
-            self._update_mix_visibility()
+        self._apply_stage_range_text()
+        self._reset_der_to_middle()
+        self._select_food("猫粮")  # 初始化选中与配色
+
+        self._grid_panel.bind("<Configure>", lambda e: self._reflow_layout())
+
+    # 目录
+    def _build_catalog(self) -> Dict[str, Dict[str, Dict[str, float]]]:
+        catalog: Dict[str, Dict[str, Dict[str, float]]] = {}
+        for cat, brands in self._BRANDS.items():
+            new_brands: Dict[str, Dict[str, float]] = {}
+            if isinstance(brands, dict):
+                for b, prods in brands.items():
+                    if isinstance(prods, dict):
+                        new_brands[b] = dict(prods)
+            catalog[cat] = new_brands
+        return catalog
+
+    # 阶段/DER
+    def _on_stage_change(self, _value):
+        self._started = False
+        self._der_range = self._CAT_DER_RANGE[self.stage_var.get()]
+        try:
+            self.der_slider.configure(from_=self._der_range[0], to=self._der_range[1])
         except Exception:
             pass
-
-        # 绑定尺寸变化时自动重排
-        self._grid_panel.bind("<Configure>", lambda e: self._reflow_layout())
-        self.after(0, self._reflow_layout)
-
-    # 以下交互
-    def _on_stage_change(self, _sel=None):
-        stage = self.stage_var.get()
-        if stage not in self._CAT_DER_RANGE:
-            return
-        self._der_range = self._CAT_DER_RANGE[stage]
-        self._apply_stage_to_controls()
-
-    def _apply_stage_to_controls(self):
-        lo, hi = self._der_range
-        mid = round((lo + hi) / 2.0, 2)
-        self.der_slider.configure(from_=lo, to=hi)
-        self.der_slider.set(mid)
-        self.der_var.set(f"{mid:.2f}")
-        self.der_range_lbl.configure(text=f"建议范围：{lo:.2f} ～ {hi:.2f}（预设 {mid:.2f}）")
-        self.stage_tip.configure(text=f"{self.stage_var.get()} 需求因子")
-        self._update_preview()
-
-    def _on_der_slider(self, val):
-        self.der_var.set(f"{float(val):.2f}")
-        self._update_preview()
-
-    def _on_der_entry_commit(self):
+        self._apply_stage_range_text()
         try:
             v = float(self.der_var.get())
         except Exception:
-            return
+            v = None
+        if v is None or not (self._der_range[0] <= v <= self._der_range[1]):
+            self._reset_der_to_middle()
+        else:
+            try:
+                self.der_slider.set(v)
+            except Exception:
+                pass
+        self._update_preview()
+
+    def _apply_stage_range_text(self):
         lo, hi = self._der_range
-        v = max(lo, min(hi, v))
+        self.der_range_lbl.configure(text=f"范围：{lo:.1f} ～ {hi:.1f}")
+        self.stage_tip.configure(text=f"建议 {((lo + hi) / 2):.1f}")
+
+    def _reset_der_to_middle(self):
+        mid = (self._der_range[0] + self._der_range[1]) / 2
+        self.der_var.set(f"{mid:.2f}")
+        try:
+            self.der_slider.set(mid)
+        except Exception:
+            pass
+
+    def _on_der_slider(self, value: float):
+        self._started = False
+        try:
+            self.der_var.set(f"{float(value):.2f}")
+        except Exception:
+            pass
+        self._update_preview()
+
+    def _on_der_entry_commit(self):
+        self._started = False
+        try:
+            v = float(self.der_var.get())
+        except Exception:
+            v = (self._der_range[0] + self._der_range[1]) / 2
+            self.der_var.set(f"{v:.2f}")
+        v = max(self._der_range[0], min(self._der_range[1], v))
         self.der_var.set(f"{v:.2f}")
-        self.der_slider.set(v)
+        try:
+            self.der_slider.set(v)
+        except Exception:
+            pass
         self._update_preview()
 
-    def _select_food(self, label):
-        self.food_var.set(label)
-        self._restyle_chips()
-        self.brand_menu.configure(values=self._brand_values_for(label))
-        self.brand_menu.set("自定义")
-        # 典型值
-        typical = {"猫粮": 380, "罐头": 100, "冻干": 520, "混合": 300}
-        self.kcal_var.set(str(typical.get(label, 350)))
+    # 食物/品牌/产品（二级菜单）
+    def _select_food(self, food: str):
+        self._started = False
+        self.food_var.set(food)
+        self._style_food_chips()  # 橙色选中
+
+        if food == "混合":
+            self._brand_block.pack_forget()
+            self._mix_block.pack(fill="x")
+        else:
+            self._mix_block.pack_forget()
+            self._brand_block.pack(fill="x")
+            self._refresh_brand_menus_for(food)
+
         self._update_preview()
 
-        self._update_mix_visibility()#原来重复调用了两次 _update_mix_visibility
-        self._reflow_layout()#切换后立即重排，保证对齐与占位正确
-
-    def _restyle_chips(self):
+    def _style_food_chips(self):
         pal = self._palette or {}
         sel = self.food_var.get()
         for b in self._chip_buttons:
-            if b.cget("text") == sel:
+            label = b.cget("text")
+            if label == sel:
                 b.configure(
                     fg_color=pal.get("orange", "#E67E36"),
                     hover_color=pal.get("orange", "#E67E36"),
                     text_color=pal.get("accent_text", "#FFFFFF"),
-                    border_width=0
+                    border_width=0,
                 )
             else:
                 b.configure(
                     fg_color=pal.get("func", "#9AA1A8"),
                     hover_color=pal.get("func_hover", "#8F969E"),
                     text_color=pal.get("text", "#000000"),
-                    border_width=1, border_color=pal.get("func_border", "#8A9299")
+                    border_width=1,
+                    border_color=pal.get("func_border", "#8A9299"),
                 )
 
-    def _update_mix_visibility(self):
-        mixing = self.food_var.get() == "混合"
-        try:#单一品牌输入禁用/启用
-            self.brand_menu.configure(state=("disabled" if mixing else "normal"))
-            self.kcal_entry.configure(state=("disabled" if mixing else "normal"))
-        except Exception:
-            pass
+    def _refresh_brand_menus_for(self, food: str):
+        brands = sorted(list(self._catalog.get(food, {}).keys()))
+        values = ["自定义"] + brands if brands else ["自定义"]
+        if self.brand_primary_var.get() not in values:
+            self.brand_primary_var.set("自定义")
+        self.brand_primary_menu.configure(values=values)
+        self._on_brand_primary_change(self.brand_primary_var.get())
 
-        try:#在同一槽位内切换显示哪个块，保证第三行永远整行对齐
-            if mixing:
-                if self._brand_block.winfo_manager():
-                    self._brand_block.pack_forget()
-                if not self._mix_block.winfo_manager():
-                    self._mix_block.pack(fill="x")
+    def _on_brand_primary_change(self, value: str):
+        self._started = False
+        food = self.food_var.get()
+        if value == "自定义":
+            self.brand_product_menu.configure(values=["自定义"])
+            self.brand_product_var.set("自定义")
+            self.kcal_entry.configure(state="normal")
+        else:
+            prods = sorted(list(self._catalog.get(food, {}).get(value, {}).keys()))
+            values = ["自定义"] + prods if prods else ["自定义"]
+            self.brand_product_menu.configure(values=values)
+            if prods:
+                first = prods[0]
+                self.brand_product_var.set(first)
+                kcal = self._catalog[food][value][first]
+                self.kcal_var.set(f"{kcal:.1f}")
+                self.kcal_entry.configure(state="disabled")
             else:
-                if self._mix_block.winfo_manager():
-                    self._mix_block.pack_forget()
-                if not self._brand_block.winfo_manager():
-                    self._brand_block.pack(fill="x")
-        except Exception:
-            pass
+                self.brand_product_var.set("自定义")
+                self.kcal_entry.configure(state="normal")
+        self._update_preview()
 
-    def _on_mix_cat_change(self, idx: int):
-        if idx < 0 or idx >= len(self._mix_rows):
-            return
+    def _on_brand_product_change(self, value: str):
+        self._started = False
+        food = self.food_var.get()
+        brand = self.brand_primary_var.get()
+        if value == "自定义" or brand == "自定义":
+            self.kcal_entry.configure(state="normal")
+        else:
+            kcal = self._catalog.get(food, {}).get(brand, {}).get(value, None)
+            if isinstance(kcal, (int, float)):
+                self.kcal_var.set(f"{kcal:.1f}")
+                self.kcal_entry.configure(state="disabled")
+            else:
+                self.kcal_entry.configure(state="normal")
+        self._update_preview()
+
+    # 混合编辑器
+    def _refresh_mix_brand_values(self, idx: int):
         row = self._mix_rows[idx]
         cat = row["cat_var"].get()
-        brands = list(self._BRANDS.get(cat, {}).keys())
+        brands = sorted(list(self._catalog.get(cat, {}).keys()))
         values = [""] + brands
+        row["brand_menu"].configure(values=values)
+        if row["brand_var"].get() not in values:
+            row["brand_var"].set("")
+
+    def _refresh_mix_product_values(self, idx: int):
+        row = self._mix_rows[idx]
+        cat = row["cat_var"].get()
+        brand = row["brand_var"].get()
+        if brand and brand in self._catalog.get(cat, {}):
+            prods = sorted(list(self._catalog[cat][brand].keys()))
+            values = [""] + prods
+        else:
+            values = [""]
+        row["prod_menu"].configure(values=values)
+        if row["prod_var"].get() not in values:
+            row["prod_var"].set("")
+
+    def _on_mix_cat_change(self, idx: int):
+        self._started = False
+        self._refresh_mix_brand_values(idx)
+        self._refresh_mix_product_values(idx)
+        self._update_preview()
+
+    def _on_mix_brand_change(self, idx: int):
+        self._started = False
+        self._refresh_mix_product_values(idx)
+        self._update_preview()
+
+    def _on_mix_product_change(self, idx: int):
+        self._started = False
+        self._update_preview()
+
+    def _mix_equalize(self):
+        self._started = False
+        rows = []
+        for row in self._mix_rows:
+            cat = row["cat_var"].get().strip()
+            brand = row["brand_var"].get().strip()
+            prod = row["prod_var"].get().strip()
+            if cat and brand and prod:
+                rows.append(row)
+        if not rows:
+            return
+        percentage = 100.0 / len(rows)  # 均分百分比
+        for r in rows:
+            r["ratio_var"].set(f"{percentage:.1f}")
+        self._update_preview()
+
+    def _mix_clear(self):
+        self._started = False
+        for row in self._mix_rows:
+            row["brand_var"].set("")
+            row["prod_var"].set("")
+            row["ratio_var"].set("")
+            self._refresh_mix_brand_values(self._mix_rows.index(row))
+            self._refresh_mix_product_values(self._mix_rows.index(row))
+        self.mix_details_var.set("")
+        self._update_preview()
+
+    # 计算
+    def _parse_weight(self) -> Optional[float]:
+        s = self.weight_var.get().strip()
         try:
-            row["brand_menu"].configure(values=values)
-            if row["brand_var"].get() not in values:
-                row["brand_var"].set("")
+            w = float(s)
+            if w > 0:
+                return w
         except Exception:
             pass
+        return None
 
-    def _mix_equalize(self):  # 混合模式：对已选择品牌的项均分比例
-        active_rows = [r for r in self._mix_rows if r["brand_var"].get()]
-        n = len(active_rows)
-        if n <= 0:
-            return
-        pct = 100.0 / n
-        for r in active_rows:
-            r["ratio_var"].set(f"{pct:.1f}")
+    def _calc_rer_der(self) -> tuple[Optional[float], Optional[float], Optional[float]]:
+        w = self._parse_weight()
+        if not w:
+            self.rer_text.set("RER：- kcal/日")
+            self.der_text.set("DER：- kcal/日")
+            return None, None, None
+        rer = 70.0 * (w ** 0.75)
+        try:
+            coeff = float(self.der_var.get())
+        except Exception:
+            coeff = (self._der_range[0] + self._der_range[1]) / 2
+            self.der_var.set(f"{coeff:.2f}")
+        der = rer * coeff
+        self.rer_text.set(f"RER：{rer:.1f} kcal/日")
+        self.der_text.set(f"DER：{der:.1f} kcal/日（系数 x{coeff:.2f}）")
+        return w, rer, der
 
-    def _mix_clear(self):  # 混合模式：清空选择与比例
-        for r in self._mix_rows:
-            r["brand_var"].set("")
-            r["ratio_var"].set("")
-        self.mix_details_var.set("")
+    def _get_single_kcal_per_100g(self) -> Optional[float]:
+        food = self.food_var.get()
+        if food == "混合":
+            return None
+        brand = self.brand_primary_var.get()
+        prod = self.brand_product_var.get()
+        if brand != "自定义" and prod != "自定义":
+            kcal = self._catalog.get(food, {}).get(brand, {}).get(prod, None)
+            if isinstance(kcal, (int, float)):
+                return float(kcal)
+        try:
+            kcal = float(self.kcal_var.get())
+            if kcal > 0:
+                return kcal
+        except Exception:
+            pass
+        return None
 
-    def _collect_mix_items(self):  # 混合模式：收集有效项
-        """返回列表 [(cat, brand, kcal_100g, ratio_float), ...]"""
+    def _get_mix_kcal_per_100g(self) -> tuple[Optional[float], str]:
         items = []
-        for r in self._mix_rows:
-            cat = (r["cat_var"].get() or "").strip()
-            brand = (r["brand_var"].get() or "").strip()
-            ratio_s = (r["ratio_var"].get() or "").strip()
-            if not brand:
+        detail_lines = []
+        total_ratio = 0.0
+        for i, row in enumerate(self._mix_rows, start=1):
+            cat = row["cat_var"].get().strip()
+            brand = row["brand_var"].get().strip()
+            prod = row["prod_var"].get().strip()
+            ratio_s = row["ratio_var"].get().strip()
+            if not ratio_s:
                 continue
             try:
                 ratio = float(ratio_s)
+                if ratio <= 0:
+                    continue
             except Exception:
                 continue
-            if ratio <= 0:
+            kcal = None
+            if cat in self._catalog and brand in self._catalog[cat] and prod in self._catalog[cat][brand]:
+                kcal = float(self._catalog[cat][brand][prod])
+            if kcal is None:
                 continue
-            kcal = self._BRANDS.get(cat, {}).get(brand)
-            if isinstance(kcal, (int, float)):
-                items.append((cat, brand, float(kcal), ratio))
-        return items
+            items.append((ratio, kcal, cat, brand, prod))
+            total_ratio += ratio
 
-    def _brand_values_for(self, food):
-        data = self._BRANDS.get(food, {})
-        return ["自定义"] + list(data.keys())
+        if not items or len(items) < 2:
+            return None, "提示：请至少选择两种以上且填写比例（%）"
 
-    def _on_brand_change(self, brand_name):
-        food = self.food_var.get()
-        if brand_name and brand_name != "自定义":
-            kc = self._BRANDS.get(food, {}).get(brand_name)
-            if kc:
-                self.kcal_var.set(str(kc))
-        self._update_preview()
-
-    # 计算逻辑 ---------------------------------------------------------------
-    @staticmethod
-    def _calc_rer(weight_kg: float) -> float:
-        # RER = 70 * kg^0.75
-        return 70.0 * (weight_kg ** 0.75)
+        # 检查比例加和是否为100%
+        if abs(total_ratio - 100.0) > 1:#允许少量误差
+            return None, "加和要=100%"
+        weighted = sum(r * k for (r, k, _, _, _) in items) / total_ratio
+        for ratio, kcal, cat, brand, prod in items:
+            detail_lines.append(f"- {cat} / {brand} / {prod}：{kcal:.1f} kcal/100g，比例 {ratio:g}%")
+        detail_text = "\n".join(detail_lines) + f"\n混合后：{weighted:.1f} kcal/100g"
+        return weighted, detail_text
 
     def _update_preview(self):
-        # 轻量更新 RER/DER 预览（不改结果行）
-        try:
-            w = float(self.weight_var.get())
-            w = max(0.0, w)
-        except Exception:
-            self.rer_text.set("RER：- kcal/日")
-            self.der_text.set("DER：- kcal/日")
-            return
-        try:
-            der = float(self.der_var.get())
-        except Exception:
-            der = None
-
-        if w <= 0:
-            self.rer_text.set("RER：- kcal/日")
-            self.der_text.set("DER：- kcal/日")
+        _, _, der = self._calc_rer_der()
+        if der is None:
+            self.result_var.set("每日建议：- g（- kcal）")
+            self.mix_details_var.set("")
             return
 
-        rer = self._calc_rer(w)
-        self.rer_text.set(f"RER：{rer:.0f} kcal/日")
-        if der is not None and der > 0:
-            self.der_text.set(f"DER：{(rer * der):.0f} kcal/日")
+        # 未点击“开始计算”时，不展示结果与明细
+        if not self._started:
+            self.result_var.set("每日建议：- g（- kcal）")
+            self.mix_details_var.set("")
+            return
+
+        food = self.food_var.get()
+        kcal_100g = None
+        mix_detail = ""
+
+        if food == "混合":
+            kcal_100g, mix_detail = self._get_mix_kcal_per_100g()
+            self.mix_details_var.set(mix_detail or "")
         else:
-            self.der_text.set("DER：- kcal/日")
+            kcal_100g = self._get_single_kcal_per_100g()
+            self.mix_details_var.set("")
 
-    def _calc(self):
+        if not kcal_100g or kcal_100g <= 0:
+            self.result_var.set("每日建议：- g（- kcal）")
+            return
+
+        grams = der * 100.0 / kcal_100g
+        self.result_var.set(f"每日建议：{grams:.0f} g（{der:.0f} kcal）")
+
+    def _on_start_press(self):
+        # 先校验体重；缺失则在结果区提示并保持未开始
+        if self._parse_weight() is None:
+            self._started = False
+            self.result_var.set("请输入你的猫儿或狗儿的体重～")
+            try:
+                play_sound("assets/cat.mp3")
+            except Exception:
+                pass
+            return
+
+        # 标记已开始，然后计算并出结果
+        self._started = True
+        self._update_preview()
         try:
-            w = float(self.weight_var.get())
-        except Exception:
-            self.result_var.set("请输入你家猫儿or狗儿正确的体重")
-            return
-        try:
-            der = float(self.der_var.get())
-        except Exception:
-            self.result_var.set("DER系数错误了～")
-            return
-        try:
-            kcal_100g = float(self.kcal_var.get())
-        except Exception:
-            self.result_var.set("热量错误")
-            return
-
-        if w <= 0 or der <= 0 or kcal_100g <= 0:
-            self.result_var.set("输入要正数哦")
-            return
-
-        rer = self._calc_rer(w)
-        der_kcal = rer * der
-
-        # 混合模式计算
-        if self.food_var.get() == "混合":
-            items = self._collect_mix_items()
-            if len(items) < 2:
-                self.result_var.set("请选择至少两种有效食物并填写比例")
-                self.mix_details_var.set("")
-                return
-
-            total_ratio = sum(r for _, _, _, r in items)
-            if total_ratio <= 0:
-                self.result_var.set("比例需为正数")
-                self.mix_details_var.set("")
-                return
-            norm = [(cat, brand, kcal, r / total_ratio) for (cat, brand, kcal, r) in items]
-
-            # 混合每克能量（kcal/g）
-            e_per_g = sum(wi * (kcal_i / 100.0) for _, _, kcal_i, wi in norm)
-            if e_per_g <= 0:
-                self.result_var.set("混合能量计算错误")
-                self.mix_details_var.set("")
-                return
-
-            total_g = der_kcal / e_per_g
-            lines = []
-            total_g_sum = 0.0
-            for cat, brand, kcal_i, wi in norm:
-                gi = total_g * wi
-                total_g_sum += gi
-                lines.append(f"- {cat} / {brand}：{gi:.0f} g  （{kcal_i:.1f} kcal/100g，{wi * 100:.1f}%）")
-
-            self.rer_text.set(f"RER：{rer:.0f} kcal/日")
-            self.der_text.set(f"DER：{der_kcal:.0f} kcal/日")
-            self.result_var.set(f"每日建议摄入：{total_g_sum:.0f} g（约 {der_kcal:.0f} kcal）")
-            self.mix_details_var.set("\n".join(lines))
-            return
-
-        grams = der_kcal / kcal_100g * 100.0  # 原单一食物逻辑（非混合）
-
-        self.rer_text.set(f"RER：{rer:.0f} kcal/日")
-        self.der_text.set(f"DER：{der_kcal:.0f} kcal/日")
-        self.result_var.set(f"每日建议摄入：{grams:.0f} g（约 {der_kcal:.0f} kcal）")
-        self.mix_details_var.set("")
-
-    def on_show(self):
-        try:
-            stop_music(300)  # 切回页面时保证没有残留的bgm
+            play_sound("assets/cat.mp3")
         except Exception:
             pass
 
-        if self._angry_modal and self._angry_modal.winfo_exists():
-            self._angry_modal.focus_force()
-            return
-        if self._warning_modal and self._warning_modal.winfo_exists():
-            try:
-                self._warning_modal.grab_release()
-            except Exception:
-                pass
-            self._warning_modal.destroy()
-        self._warning_modal = None
-        if self._desk_pet_bubble and self._desk_pet_bubble.winfo_exists():
-            try:
-                self._desk_pet_bubble.destroy()
-            except Exception:
-                pass
-        self._desk_pet_bubble = None
-        self._desk_pet_click_count = 0
-        self._desk_pet_last_click = 0.0
-        self._angry_mode = False
-        self._angry_state = 0
 
-        self.mix_details_var.set("")
-
-        if self._desk_pet and self._desk_pet.winfo_exists():
-            self._desk_pet.set_enabled(True)
-            self._desk_pet.set_image("assets/maodie_changtai.jpg", size=(72, 72))
-            self._desk_pet_bubble = show_cat_bubble(
-                self._desk_pet._label,
-                "人，你要来喂耄了吗？",
-                palette=self._palette,
-                direction="left",
-                wrap_width=260,
-            )
-
-        # 初次展示时做一次重排，确保布局正确
+    # 布局
+    def _reflow_layout(self):
         try:
-            self.after(0, self._reflow_layout)
+            width = self._grid_panel.winfo_width()
+        except Exception:
+            return
+        single = width < self._layout_breakpoint
+        try:
+            self._slot_top.grid_configure(row=0, column=0, columnspan=2, padx=16, pady=(16, 8), sticky="nsew")
+            if single:
+                self._slot_left1.grid_configure(row=1, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+                self._slot_right1.grid_configure(row=2, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+                self._slot_left2.grid_configure(row=3, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+                self._slot_right2.grid_configure(row=4, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+                self._slot_row3.grid_configure(row=5, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+                self._slot_bottom.grid_configure(row=6, column=0, columnspan=2, padx=16, pady=(8, 16), sticky="nsew")
+            else:
+                self._slot_left1.grid_configure(row=1, column=0, columnspan=1, padx=(16, 8), pady=8, sticky="nsew")
+                self._slot_right1.grid_configure(row=1, column=1, columnspan=1, padx=(8, 16), pady=8, sticky="nsew")
+                self._slot_left2.grid_configure(row=2, column=0, columnspan=1, padx=(16, 8), pady=8, sticky="nsew")
+                self._slot_right2.grid_configure(row=2, column=1, columnspan=1, padx=(8, 16), pady=8, sticky="nsew")
+                self._slot_row3.grid_configure(row=3, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
+                self._slot_bottom.grid_configure(row=4, column=0, columnspan=2, padx=16, pady=(8, 16), sticky="nsew")
         except Exception:
             pass
 
+    # 桌宠
     def _on_desk_pet_click(self):
-        if self._angry_mode:
-            return
         now = time.time()
         if now - self._desk_pet_last_click > 0.9:
             self._desk_pet_click_count = 0
@@ -769,291 +997,45 @@ class PetCaloriePage(ctk.CTkFrame):
                 pass
             self._desk_pet_bubble = None
 
-        if self._desk_pet_click_count >= 3:
-            self._desk_pet_click_count = 0
-            if self._angry_state == 0:
-                self._show_warning_modal()
-            else:
-                self._trigger_angry_pet()
-            return
-
-        lines = [
-            "人，我是听话的小猫",
-            "人，你要记得按时喂猫哦",
-            "人，你今天过得怎么样？",
+        tips = [
+            "喵~ 记得填体重和选择吃的哦！",
+            "再点我几下，看看会发生什么~",
+            "今天也要健康吃饭！",
         ]
-        if self._desk_pet and self._desk_pet.winfo_exists():
-            self._desk_pet_bubble = show_cat_bubble(
-                self._desk_pet._label,
-                random.choice(lines),
-                palette=self._palette,
-                direction="left",
-                wrap_width=260,
-            )
-
-    def _show_warning_modal(self):
-        if self._warning_modal and self._warning_modal.winfo_exists():
-            self._warning_modal.focus_force()
-            return
-        pal = self._palette or {}
-        hover_soft = pal.get("func_hover", pal.get("surface", "#E5E5EA"))
-        border_color = pal.get("border", "#D1D1D6")
-        modal = ctk.CTkToplevel(self)
-        modal.title("哈！")
-        modal.resizable(False, False)
-        modal.configure(fg_color=pal.get("surface", "#FFFFFF"))
-        modal.transient(self.winfo_toplevel())
-        modal.grab_set()
-        modal.protocol("WM_DELETE_WINDOW", lambda: None)
-
-        container = ctk.CTkFrame(modal, fg_color=pal.get("surface", "#FFFFFF"), corner_radius=20)
-        container.pack(fill="both", expand=True, padx=36, pady=28)
-
-        title_lbl = ctk.CTkLabel(
-            container,
-            text="哈！",
-            font=("SF Pro Display", 24, "bold"),
-            text_color=pal.get("text", "#000000"),
+        msg = tips[self._desk_pet_click_count % len(tips)]
+        self._desk_pet_bubble = show_cat_bubble(
+            self._desk_pet._label, msg, palette=self._palette, direction="left", wrap_width=260
         )
-        title_lbl.pack(anchor="w")
-
-        content_lbl = ctk.CTkLabel(
-            container,
-            text="小猫好像不太能接受你的热情？",
-            font=("Microsoft YaHei UI", 14),
-            text_color=pal.get("subtext", "#6C6C70"),
-            justify="left",
-            wraplength=360,
-        )
-        content_lbl.pack(anchor="w", pady=(14, 24))
-
-        btn_row = ctk.CTkFrame(container, fg_color="transparent")
-        btn_row.pack(fill="x", pady=(0, 8))
-
-        def close_warning():
-            if self._warning_modal and self._warning_modal.winfo_exists():
-                try:
-                    self._warning_modal.grab_release()
-                except Exception:
-                    pass
-                self._warning_modal.destroy()
-            self._warning_modal = None
-
-        def handle_soft():
-            close_warning()
-            self._angry_state = max(self._angry_state, 1)
-
-        def handle_brave():
-            close_warning()
-            self._angry_state = max(self._angry_state, 1)
-            self._trigger_angry_pet()
-
-        btn_soft = ctk.CTkButton(
-            btn_row,
-            text="好吧，我会注意适度撸猫",
-            command=handle_soft,
-            fg_color=pal.get("surface", "#FFFFFF"),
-            hover_color=hover_soft,
-            text_color=pal.get("text", "#000000"),
-            border_width=1,
-            border_color=border_color,
-            corner_radius=16,
-            width=360,
-        )
-        btn_soft.pack(fill="x", pady=(0, 10))
-
-        btn_brave = ctk.CTkButton(
-            btn_row,
-            text="明知山有虎，偏向虎山行！",
-            command=handle_brave,
-            fg_color=pal.get("orange", "#E67E36"),
-            hover_color=pal.get("orange", "#E67E36"),
-            text_color=pal.get("accent_text", "#FFFFFF"),
-            corner_radius=16,
-            width=360,
-        )
-        btn_brave.pack(fill="x")
-
-        modal.update_idletasks()
-        parent = self.winfo_toplevel()
         try:
-            px = parent.winfo_rootx()
-            py = parent.winfo_rooty()
-            pw = parent.winfo_width()
-            ph = parent.winfo_height()
-        except Exception:
-            px = py = 100
-            pw = ph = 400
-        mw = max(modal.winfo_width(), 460)
-        mh = max(modal.winfo_height(), 240)
-        x = px + (pw - mw) // 2
-        y = py + (ph - mh) // 2
-        modal.geometry(f"{mw}x{mh}+{int(x)}+{int(y)}")
-        btn_soft.focus_set()
-        self._warning_modal = modal
-        self._angry_state = max(self._angry_state, 1)
-
-    def _trigger_angry_pet(self):
-        if self._angry_mode:
-            return
-        if self._warning_modal and self._warning_modal.winfo_exists():
-            try:
-                self._warning_modal.grab_release()
-            except Exception:
-                pass
-            self._warning_modal.destroy()
-        self._warning_modal = None
-        self._angry_state = 2
-        self._angry_mode = True
-        if self._desk_pet and self._desk_pet.winfo_exists():
-            self._desk_pet.set_enabled(False)
-            self._desk_pet.set_image("assets/maodie_haqi.gif", size=(72, 72))
-        try:
-            play_sound("assets/maodie_haqi.mp3")
+            play_sound("assets/cat.mp3")
         except Exception:
             pass
 
-        try:
-            self.after(1600, lambda: play_music(self._bgm_path, volume=0.55, loop=True))  # 让哈气先出现700ms，再开始循环
-        except Exception:
-            pass
-
-        self._show_angry_modal()
-
-    def _show_angry_modal(self):
-        if self._angry_modal and self._angry_modal.winfo_exists():
-            self._angry_modal.focus_force()
-            return
-        pal = self._palette or {}
-        modal = ctk.CTkToplevel(self)
-        modal.title("哈！！！")
-        modal.resizable(False, False)
-        modal.configure(fg_color=pal.get("surface", "#FFFFFF"))
-        modal.transient(self.winfo_toplevel())
-        modal.grab_set()
-        modal.protocol("WM_DELETE_WINDOW", lambda: None)
-
-        container = ctk.CTkFrame(modal, fg_color=pal.get("surface", "#FFFFFF"), corner_radius=20)
-        container.pack(fill="both", expand=True, padx=36, pady=30)
-
-        title_lbl = ctk.CTkLabel(
-            container,
-            text="哈！！！",
-            font=("SF Pro Display", 28, "bold"),
-            text_color=pal.get("text", "#000000"),
-        )
-        title_lbl.pack(anchor="w")
-
-        content_lbl = ctk.CTkLabel(
-            container,
-            text="小猫很生气，并撤回了一个计算器",
-            font=("Microsoft YaHei UI", 15),
-            text_color=pal.get("subtext", "#6C6C70"),
-            justify="left",
-            wraplength=380,
-        )
-        content_lbl.pack(anchor="w", pady=(16, 32))
-
-        exit_btn = ctk.CTkButton(
-            container,
-            text="耄好，人坏",
-            command=self._terminate_application,
-            fg_color=pal.get("orange", "#E67E36"),
-            hover_color=pal.get("orange", "#E67E36"),
-            text_color=pal.get("accent_text", "#FFFFFF"),
-            corner_radius=18,
-            height=48,
-            width=360,
-        )
-        exit_btn.pack(fill="x")
-
-        modal.update_idletasks()
-        parent = self.winfo_toplevel()
-        try:
-            px = parent.winfo_rootx()
-            py = parent.winfo_rooty()
-            pw = parent.winfo_width()
-            ph = parent.winfo_height()
-        except Exception:
-            px = py = 100
-            pw = ph = 400
-        mw = max(modal.winfo_width(), 460)
-        mh = max(modal.winfo_height(), 240)
-        x = px + (pw - mw) // 2
-        y = py + (ph - mh) // 2
-        modal.geometry(f"{mw}x{mh}+{int(x)}+{int(y)}")
-        exit_btn.focus_set()
-        self._angry_modal = modal
-
-    def _terminate_application(self):
-        try:
-            stop_music(300)
-        except Exception:
-            pass
-        if self._angry_modal and self._angry_modal.winfo_exists():
-            try:
-                self._angry_modal.grab_release()
-            except Exception:
-                pass
-            self._angry_modal.destroy()
-        self._angry_modal = None
-        root = self.winfo_toplevel()
-        try:
-            root.destroy()
-        except Exception:
-            pass
-
+    # 主题
     def apply_theme(self, pal, name):
         self._palette = pal or {}
-        self._theme_name = name
+        self._theme_name = name or self._theme_name
+
         try:
-            self.configure(fg_color=pal.get("bg", "#F5F5F5"))
-            self.device.configure(fg_color=pal.get("device", "#C8CDD2"))
-            self._card.configure(fg_color=pal.get("device", "#C8CDD2"))
-            self.calc_btn.configure(
-                fg_color=pal.get("orange", "#E67E36"),
-                hover_color=pal.get("orange", "#E67E36"),
-                text_color=pal.get("accent_text", "#FFFFFF"),
-            )
+            self.configure(fg_color=self._palette.get("bg", "#F5F5F5"))
+            self.device.configure(fg_color=self._palette.get("device", "#C8CDD2"))
+            self._card.configure(fg_color=self._palette.get("device", "#C8CDD2"))
         except Exception:
             pass
 
-    def _reflow_layout(self):
+        self._title_label.configure(text_color=self._palette.get("text", "#000000"))
+
+        # 食物类型 chips 使用橙色选中
+        self._style_food_chips()
+
+        # 开始按钮橙色
         try:
-            width = max(1, self._grid_panel.winfo_width())
-        except Exception:
-            width = self._layout_breakpoint
-
-        two_cols = width >= self._layout_breakpoint
-        mixing = (self.food_var.get() == "混合")
-
-        self._slot_top.grid_configure(row=0, column=0, columnspan=2, padx=16, pady=(16, 8), sticky="nsew")
-
-        if two_cols:
-            self._slot_left1.grid_configure(row=1, column=0, columnspan=1, padx=(16, 8), pady=8, sticky="nsew")#显式重置columnspan=1，防止从单列切回双列时残留为2导致覆盖
-            self._slot_right1.grid_configure(row=1, column=1, columnspan=1, padx=(8, 16), pady=8, sticky="nsew")
-        else:
-            self._slot_left1.grid_configure(row=1, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
-            self._slot_right1.grid_configure(row=2, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
-
-        if two_cols:
-            self._slot_left2.grid_configure(row=2, column=0, columnspan=1, padx=(16, 8), pady=8, sticky="nsew")
-            self._slot_right2.grid_configure(row=2, column=1, columnspan=1, padx=(8, 16), pady=8, sticky="nsew")
-        else:
-            self._slot_left2.grid_configure(row=3, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
-            self._slot_right2.grid_configure(row=4, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
-
-
-        row3_index = 3 if two_cols else 5#行3：永远整行
-        self._slot_row3.grid_configure(row=row3_index, column=0, columnspan=2, padx=16, pady=8, sticky="nsew")
-
-        last_row = 4 if two_cols else 6
-        self._slot_bottom.grid_configure(row=last_row, column=0, columnspan=2, padx=16, pady=(8, 16), sticky="nsew")
-
-        try:# 宽屏时混合明细更宽的换行宽度
-            wrap = max(360, width - 160)
-            if hasattr(self, "_mix_details_lbl"):
-                self._mix_details_lbl.configure(wraplength=wrap)
+            self._start_btn.configure(
+                fg_color=self._palette.get("orange", "#E67E36"),
+                hover_color=self._palette.get("orange", "#E67E36"),
+                text_color=self._palette.get("accent_text", "#FFFFFF"),
+                border_width=0,
+            )
         except Exception:
             pass
 
