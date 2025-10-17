@@ -28,8 +28,7 @@ class PetCaloriePage(ctk.CTkFrame):
             "11岁以上高龄": (1.1, 1.6),
         }
 
-
-       self._BRANDS = {
+        self._BRANDS = {
             "猫粮": {
                 "Orijen Cat&Kitten": 404.0,
                 "Royal Canin Indoor27": 360.0,
@@ -212,10 +211,11 @@ class PetCaloriePage(ctk.CTkFrame):
 
                 "Nulo 鸡鱼": 443.7,
             },
+
             "混合": {}
         }
 
-#变量
+        #变量
         self.weight_var = tk.StringVar(value="")
         self.stage_var = tk.StringVar(value="已结扎")
         self.der_var = tk.StringVar(value="")
@@ -236,6 +236,11 @@ class PetCaloriePage(ctk.CTkFrame):
         self._angry_modal = None
         self._warning_modal = None
         self._angry_state = 0
+
+
+        self._mix_rows = []#混合编辑器的3行控件与变量
+        self.mix_details_var = tk.StringVar(value="")
+
 
         self._build()
         self.apply_theme(self._palette, self._theme_name)
@@ -353,6 +358,67 @@ class PetCaloriePage(ctk.CTkFrame):
         self.kcal_entry = ctk.CTkEntry(br_row, width=120, textvariable=self.kcal_var)
         self.kcal_entry.pack(side="right", padx=(0, 8))
 
+
+        self.mix_block = ctk.CTkFrame(card, corner_radius=14)#混合编辑器，仅在选择混合时显示
+        mix_title = ctk.CTkLabel(self.mix_block, text="混合编辑器（选择 2～3 种，比例为克数占比）")
+        mix_title.pack(anchor="w", padx=12, pady=(10, 2))
+
+        def _brand_values_for_mix(cat: str):
+            return [""] + list(self._BRANDS.get(cat, {}).keys())#列出已有品牌，并提供空项
+
+        self._mix_rows = []
+        default_cats = ["罐头", "冻干", "猫粮"]
+        for i in range(3):
+            row = ctk.CTkFrame(self.mix_block, fg_color="transparent")
+            row.pack(fill="x", padx=12, pady=6)
+
+            cat_var = tk.StringVar(value=default_cats[i % len(default_cats)])
+            brand_var = tk.StringVar(value="")
+            ratio_var = tk.StringVar(value="")
+
+            ctk.CTkLabel(row, text=f"{i+1}.").pack(side="left", padx=(0, 6))
+            cat_menu = ctk.CTkOptionMenu(
+                row, variable=cat_var,
+                values=["罐头", "冻干", "猫粮"],
+                width=110,
+                command=lambda _v, idx=i: self._on_mix_cat_change(idx)
+            )
+            cat_menu.pack(side="left", padx=(0, 8))
+
+            brand_menu = ctk.CTkOptionMenu(
+                row, variable=brand_var,
+                values=_brand_values_for_mix(cat_var.get()),
+                width=260
+            )
+            brand_menu.pack(side="left", padx=(0, 8))
+
+            ctk.CTkLabel(row, text="比例 %").pack(side="left", padx=(0, 6))
+            ratio_entry = ctk.CTkEntry(row, textvariable=ratio_var, width=80, placeholder_text="如 50")
+            ratio_entry.pack(side="left")
+
+
+            self._mix_rows.append({#保存行控件与变量，供联动与计算使用
+                "row": row,
+                "cat_var": cat_var,
+                "brand_var": brand_var,
+                "ratio_var": ratio_var,
+                "brand_menu": brand_menu,
+            })
+
+        btns = ctk.CTkFrame(self.mix_block, fg_color="transparent")#辅助按钮
+        btns.pack(fill="x", padx=12, pady=(4, 8))
+        ctk.CTkButton(btns, text="均分", width=80, command=self._mix_equalize).pack(side="left", padx=(0, 8))
+        ctk.CTkButton(btns, text="清空", width=80, command=self._mix_clear).pack(side="left")
+
+        ctk.CTkLabel(self.mix_block, text="混合明细：").pack(anchor="w", padx=12, pady=(8, 2))
+        ctk.CTkLabel(self.mix_block, textvariable=self.mix_details_var, justify="left", wraplength=420).pack(
+            anchor="w", padx=12, pady=(0, 12)
+        )# 注意：不在此处 pack mix_block；由 _update_mix_visibility() 控制显示
+
+
+
+
+
         # 开始计算
         btn_row = ctk.CTkFrame(card, fg_color="transparent")
         btn_row.pack(fill="x", padx=16, pady=(8, 16))
@@ -362,6 +428,13 @@ class PetCaloriePage(ctk.CTkFrame):
 
         self._apply_stage_to_controls()
         self._restyle_chips()
+
+
+        try:#初始化时根据默认类型隐藏/显示混合编辑器
+            self._update_mix_visibility()
+        except Exception:
+            pass
+
 
 #以下交互
     def _on_stage_change(self, _sel=None):
@@ -406,6 +479,12 @@ class PetCaloriePage(ctk.CTkFrame):
         self.kcal_var.set(str(typical.get(label, 350)))
         self._update_preview()
 
+        try: #根据是否为“混合”切换ui
+            self._update_mix_visibility()
+        except Exception:
+            pass
+
+
     def _restyle_chips(self):
         pal = self._palette or {}
         sel = self.food_var.get()
@@ -424,6 +503,82 @@ class PetCaloriePage(ctk.CTkFrame):
                     text_color=pal.get("text", "#000000"),
                     border_width=1, border_color=pal.get("func_border", "#8A9299")
                 )
+
+    # 混合模式：显隐控制
+    def _update_mix_visibility(self):
+        if getattr(self, "mix_block", None) is None:
+            return
+        if self.food_var.get() == "混合":
+            try:#禁用单一品牌输入，避免混淆
+                self.brand_menu.configure(state="disabled")
+                self.kcal_entry.configure(state="disabled")
+            except Exception:
+                pass
+            # 显示混合编辑器
+            if not self.mix_block.winfo_manager():
+                self.mix_block.pack(fill="x", padx=16, pady=8)
+        else:
+            try:#恢复单一品牌输入
+                self.brand_menu.configure(state="normal")
+                self.kcal_entry.configure(state="normal")
+            except Exception:
+                pass
+            if self.mix_block.winfo_manager():#隐藏混合编辑器并清空明细
+                self.mix_block.pack_forget()
+            self.mix_details_var.set("")
+
+
+    def _on_mix_cat_change(self, idx: int):
+        if idx < 0 or idx >= len(self._mix_rows):
+            return
+        row = self._mix_rows[idx]
+        cat = row["cat_var"].get()
+        brands = list(self._BRANDS.get(cat, {}).keys())
+        values = [""] + brands
+        try:
+            row["brand_menu"].configure(values=values)
+            if row["brand_var"].get() not in values:
+                row["brand_var"].set("")
+        except Exception:
+            pass
+
+
+    def _mix_equalize(self):#混合模式：对已选择品牌的项均分比例
+        active_rows = [r for r in self._mix_rows if r["brand_var"].get()]
+        n = len(active_rows)
+        if n <= 0:
+            return
+        pct = 100.0 / n
+        for r in active_rows:
+            r["ratio_var"].set(f"{pct:.1f}")
+
+
+    def _mix_clear(self):#混合模式：清空选择与比例
+        for r in self._mix_rows:
+            r["brand_var"].set("")
+            r["ratio_var"].set("")
+        self.mix_details_var.set("")
+
+
+    def _collect_mix_items(self):#混合模式：收集有效项
+        """返回列表 [(cat, brand, kcal_100g, ratio_float), ...]"""
+        items = []
+        for r in self._mix_rows:
+            cat = (r["cat_var"].get() or "").strip()
+            brand = (r["brand_var"].get() or "").strip()
+            ratio_s = (r["ratio_var"].get() or "").strip()
+            if not brand:
+                continue
+            try:
+                ratio = float(ratio_s)
+            except Exception:
+                continue
+            if ratio <= 0:
+                continue
+            kcal = self._BRANDS.get(cat, {}).get(brand)
+            if isinstance(kcal, (int, float)):
+                items.append((cat, brand, float(kcal), ratio))
+        return items
 
     def _brand_values_for(self, food):
         data = self._BRANDS.get(food, {})
@@ -492,11 +647,51 @@ class PetCaloriePage(ctk.CTkFrame):
 
         rer = self._calc_rer(w)
         der_kcal = rer * der
-        grams = der_kcal / kcal_100g * 100.0
+
+        # 混合模式计算
+        if self.food_var.get() == "混合":
+            items = self._collect_mix_items()
+            if len(items) < 2:
+                self.result_var.set("请选择至少两种有效食物并填写比例")
+                self.mix_details_var.set("")
+                return
+
+            total_ratio = sum(r for _, _, _, r in items)
+            if total_ratio <= 0:
+                self.result_var.set("比例需为正数")
+                self.mix_details_var.set("")
+                return
+            norm = [(cat, brand, kcal, r / total_ratio) for (cat, brand, kcal, r) in items]
+
+            # 混合每克能量（kcal/g）
+            e_per_g = sum(wi * (kcal_i / 100.0) for _, _, kcal_i, wi in norm)
+            if e_per_g <= 0:
+                self.result_var.set("混合能量计算错误")
+                self.mix_details_var.set("")
+                return
+
+            total_g = der_kcal / e_per_g
+            lines = []
+            total_g_sum = 0.0
+            for cat, brand, kcal_i, wi in norm:
+                gi = total_g * wi
+                total_g_sum += gi
+                lines.append(f"- {cat} / {brand}：{gi:.0f} g  （{kcal_i:.1f} kcal/100g，{wi*100:.1f}%）")
+
+            self.rer_text.set(f"RER：{rer:.0f} kcal/日")
+            self.der_text.set(f"DER：{der_kcal:.0f} kcal/日")
+            self.result_var.set(f"每日建议摄入：{total_g_sum:.0f} g（约 {der_kcal:.0f} kcal）")
+            self.mix_details_var.set("\n".join(lines))
+            return
+
+
+        grams = der_kcal / kcal_100g * 100.0#原单一食物逻辑（非混合）
 
         self.rer_text.set(f"RER：{rer:.0f} kcal/日")
         self.der_text.set(f"DER：{der_kcal:.0f} kcal/日")
         self.result_var.set(f"每日建议摄入：{grams:.0f} g（约 {der_kcal:.0f} kcal）")
+        self.mix_details_var.set("")
+
 
     def on_show(self):
         try:
@@ -524,6 +719,10 @@ class PetCaloriePage(ctk.CTkFrame):
         self._desk_pet_last_click = 0.0
         self._angry_mode = False
         self._angry_state = 0
+
+        self.mix_details_var.set("")
+
+
         if self._desk_pet and self._desk_pet.winfo_exists():
             self._desk_pet.set_enabled(True)
             self._desk_pet.set_image("assets/maodie_changtai.jpg", size=(72, 72))
