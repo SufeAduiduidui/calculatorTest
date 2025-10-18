@@ -8,6 +8,8 @@ from ..core.safe_eval import SafeEvaluator
 from .sound_player import play as play_sound
 from .dialogs import show_cat_bubble
 
+from .sound_player import toggle_muted, is_muted
+
 
 class CalculatorPage(ctk.CTkFrame):
     def __init__(self, master, evaluator: SafeEvaluator, palette, theme_name):
@@ -41,20 +43,30 @@ class CalculatorPage(ctk.CTkFrame):
         right = ctk.CTkFrame(brand, fg_color="transparent")
         right.pack(side="right")
 
+        right_row = ctk.CTkFrame(right, fg_color="transparent")
+        right_row.pack()
+
         self.lbl_brand = ctk.CTkLabel(left, text="CASIO", font=("SF Pro Display", 18, "bold"))
         self.lbl_sub = ctk.CTkLabel(left, text="CLASSWIZ", font=("SF Pro Text", 12))
         self.lbl_brand.pack()
         self.lbl_sub.pack()
 
+        self._mute_btn = ctk.CTkButton(
+            right_row,
+            text=("有声" if is_muted() else "无声"),
+            width=54,
+            command=self._toggle_mute,
+        )
+        self._mute_btn.pack(side="left", padx=(0, 6))
 
         self.pet = PetWidget(
-            right,
+            right_row,
             image_path="assets/pet.jpg",
             size=(64, 64),
             on_click=self._handle_pet_single_click,
             on_triple_click=self._open_pet_calc,
         )
-        self.pet.pack(padx=6, pady=0)
+        self.pet.pack(side="left", padx=6, pady=0)
 
 
         screen = ctk.CTkFrame(self.device, corner_radius=12)
@@ -324,6 +336,19 @@ class CalculatorPage(ctk.CTkFrame):
         else:
             cont.pack(fill="both", padx=20, pady=(0, 12))
 
+    def _toggle_mute(self):
+        try:
+            toggle_muted()
+        except Exception:
+            pass
+        self._sync_mute_btn()
+
+    def _sync_mute_btn(self):
+        try:
+            self._mute_btn.configure(text=("有声" if is_muted() else "无声"))
+        except Exception:
+            pass
+
     def apply_theme(self, pal, name):
         self._palette = pal
         self._theme_name = name
@@ -355,3 +380,5 @@ class CalculatorPage(ctk.CTkFrame):
             self._style_digit_button(b, "")
         for b, kind in self._op_buttons:
             self._style_op_button(b, kind=kind)
+
+        self._sync_mute_btn()
