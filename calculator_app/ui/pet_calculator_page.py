@@ -8,7 +8,8 @@ import random
 from .pet_widget import PetWidget
 from .dialogs import show_cat_bubble
 
-from .sound_player import play as play_sound, play_music, stop_music
+from .sound_player import play as play_sound, play_music, stop_music, toggle_muted, is_muted
+
 
 from PIL import Image, ImageSequence
 
@@ -389,13 +390,21 @@ class PetCaloriePage(ctk.CTkFrame):
 
         right = ctk.CTkFrame(top, fg_color="transparent")
         right.pack(side="right")
+        right_row = ctk.CTkFrame(right, fg_color="transparent")
+        right_row.pack()
+
+        self._mute_btn = ctk.CTkButton(
+            right_row, text="静音", width=54, command=self._toggle_mute
+        )
+        self._mute_btn.pack(side="left", padx=(0, 6))
+
         self._desk_pet = PetWidget(
-            right,
+            right_row,
             image_path="assets/maodie_changtai.jpg",
             size=(72, 72),
             on_click=self._on_desk_pet_click,
         )
-        self._desk_pet.pack(padx=6)
+        self._desk_pet.pack(side="left", padx=6)
 
         card = ctk.CTkScrollableFrame(self.device, corner_radius=20) #仅类型变为可滚动
         card.pack(fill="both", expand=True, padx=20, pady=(0, 20))
@@ -624,6 +633,23 @@ class PetCaloriePage(ctk.CTkFrame):
         self._grid_panel.bind("<Configure>", lambda e: self._reflow_layout())
 
     # 目录
+
+    def _toggle_mute(self):
+        try:
+            toggle_muted()
+        except Exception:
+            pass
+        self._sync_mute_btn()
+
+    def _sync_mute_btn(self):
+        try:
+            if is_muted():
+                self._mute_btn.configure(text="有声")
+            else:
+                self._mute_btn.configure(text="无声")
+        except Exception:
+            pass
+
     def _build_catalog(self) -> Dict[str, Dict[str, Dict[str, float]]]:
         catalog: Dict[str, Dict[str, Dict[str, float]]] = {}
         for cat, brands in self._BRANDS.items():
@@ -1151,6 +1177,7 @@ class PetCaloriePage(ctk.CTkFrame):
             self.after(0, self._reflow_layout)
         except Exception:
             pass
+        self._sync_mute_btn()
 
     def _show_warning_modal(self):
         if self._warning_modal and self._warning_modal.winfo_exists():
@@ -1570,6 +1597,8 @@ class PetCaloriePage(ctk.CTkFrame):
             )
         except Exception:
             pass
+        self._sync_mute_btn()
+
 
 
 
