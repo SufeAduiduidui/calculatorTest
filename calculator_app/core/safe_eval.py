@@ -33,8 +33,8 @@ class SafeEvaluator:
 
         return sin, cos, tan, asin, acos, atan
 
-    @staticmethod
-    def _nth_root(degree, value):
+    
+    def _nth_root(self, degree, value):
         try:
             deg = float(degree)
         except (TypeError, ValueError):
@@ -66,6 +66,20 @@ class SafeEvaluator:
 
         return val ** power
 
+    def _factorial(self, value):
+        try:
+            val = float(value)
+        except (TypeError, ValueError):
+            raise ValueError("阶乘参数必须是数字")
+        if not math.isfinite(val):
+            raise ValueError("阶乘参数必须是有限数")
+        n = int(round(val))
+        if not math.isclose(val, n, rel_tol=1e-9, abs_tol=1e-9):
+            raise ValueError("阶乘参数必须是整数")
+        if n < 0:
+            raise ValueError("阶乘参数必须是非负整数")
+        return math.factorial(n)
+
     def _allowed_names(self, extra_vars=None):
         sin, cos, tan, asin, acos, atan = self._make_trig()
         allowed = {
@@ -84,9 +98,14 @@ class SafeEvaluator:
             "asin": asin,
             "acos": acos,
             "atan": atan,
+            "arcsin": asin,
+            "arccos": acos,
+            "arctan": atan,
             "root": self._nth_root,
             "yroot": self._nth_root,
             "nthroot": self._nth_root,
+            "fact": self._factorial,
+            "factorial": self._factorial,
             "ans": self.last_result,
             "Ans": self.last_result,
         }
@@ -102,6 +121,19 @@ class SafeEvaluator:
         expr = expr.replace("\u221a", "sqrt")
         expr = expr.replace("√", "sqrt")
         expr = expr.replace("ANS", "Ans")
+        replacements = {
+            "sin^-1": "arcsin",
+            "cos^-1": "arccos",
+            "tan^-1": "arctan",
+            "SIN^-1": "arcsin",
+            "COS^-1": "arccos",
+            "TAN^-1": "arctan",
+            "sin⁻¹": "arcsin",
+            "cos⁻¹": "arccos",
+            "tan⁻¹": "arctan",
+        }
+        for key, value in replacements.items():
+            expr = expr.replace(key, value)
         return expr
 
     def evaluate(self, expr, variables=None):
