@@ -33,7 +33,6 @@ class CalculatorPage(ctk.CTkFrame):
         self._solve_last_guess = None
         self._solve_last_var = None
         self._sigma_last_args = {"var": "n", "lower": "1", "upper": "10", "expr": "n"}
-        self._ten_power_last = "1"
         self._pow_last_args = {"base": "2", "exp": "3"}
         self._integral_last_args = {"var": "x", "lower": "0", "upper": "1", "expr": "x"}
         self._derivative_last_var = "x"
@@ -80,7 +79,6 @@ class CalculatorPage(ctk.CTkFrame):
         )
         self.pet.pack(side="left", padx=6, pady=0)
 
-
         screen = ctk.CTkFrame(self.device, corner_radius=12)
         screen.pack(fill="x", padx=20, pady=(6, 12))
         scr_row = ctk.CTkFrame(screen, fg_color="transparent")
@@ -106,26 +104,26 @@ class CalculatorPage(ctk.CTkFrame):
                 ("SOLVE", self._solve_equation, "func_call", True),
                 ("CALC", self._calc_expression, "func_call", True),
                 ("x!", self._insert_factorial, "func_call", True),
-                ("x^3", "**3", "func", True),
-                ("x^2", "**2", "func", True),
+                ("x^3", self._insert_pow3, "func_call", True),
+                ("x^2", self._insert_pow2, "func_call", True),
                 ("DRG", self._toggle_drg, "func_call", True),
             ],
             [
                 ("sqrt", self._insert_sqrt, "func_call", True),
                 ("y√x", self._insert_y_root, "func_call", True),
-                ("1/x", "1/(", "func", True),
-                ("log10", "log10(", "func", True),
-                ("ln", "ln(", "func", True),
+                ("1/x", self._insert_reciprocal, "func_call", True),
+                ("log10", self._insert_log10, "func_call", True),
+                ("ln", self._insert_ln, "func_call", True),
             ],
             [
                 ("Σ", self._sigma_sum, "func_call", True),
                 ("\u03C0", "pi", "func", True),
                 ("e", "e", "func", True),
-                ("sin", "sin(", "func", True),
-                ("cos", "cos(", "func", True),
+                ("sin", self._insert_sin, "func_call", True),
+                ("cos", self._insert_cos, "func_call", True),
             ],
             [
-                ("tan", "tan(", "func", True),
+                ("tan", self._insert_tan, "func_call", True),
                 ("|x|", self._insert_abs, "func_call", True),
                 ("xⁿ", self._power_prompt, "func_call", True),
                 ("(", "(", "func", True),
@@ -191,8 +189,10 @@ class CalculatorPage(ctk.CTkFrame):
                     self._style_op_button(b, kind="op")
                     self._op_buttons.append((b, "op"))
                 elif label == "*10^x":
-                    b = ctk.CTkButton(rf, text=label, height=50, width=80, corner_radius=10,
-                                      command=self._ten_power)
+                    b = ctk.CTkButton(
+                        rf, text=label, height=50, width=80, corner_radius=10,
+                        command=self._insert_ten_power
+                    )
                     b.pack(side="left", padx=4, expand=True, fill="x")
                     self._style_digit_button(b, label)
                     self._digit_buttons.append(b)
@@ -233,7 +233,6 @@ class CalculatorPage(ctk.CTkFrame):
         ctk.CTkButton(btns, text="Clear", width=80, command=self.history_clear).pack(side="left", padx=2)
 
         self.apply_theme(self._palette, self._theme_name)
-
 
     def _open_pet_calc(self):
         app = self.winfo_toplevel()
@@ -332,26 +331,127 @@ class CalculatorPage(ctk.CTkFrame):
         entry.icursor(pos + cursor_offset)
         entry.focus_set()
 
+    # 通用：包裹或插入并高亮括号内；若有选中内容则包裹，否则插入占位符
+    def _insert_or_wrap_select(self, prefix: str, suffix: str, placeholder: str = "x"):
+        entry = self.expr_entry
+        try:
+            if entry.selection_present():
+                start = entry.index("sel.first")
+                end = entry.index("sel.last")
+                content = entry.get()
+                inside = content[start:end]
+                entry.delete(start, end)
+                pos = start
+            else:
+                pos = entry.index("insert")
+                inside = placeholder
+
+            entry.insert(pos, prefix + inside + suffix)
+            sel_start = pos + len(prefix)
+            sel_end = sel_start + len(inside)
+            try:
+                entry.selection_range(sel_start, sel_end)  # 高亮括号内
+            except Exception:
+                entry.icursor(sel_start)
+            entry.focus_set()
+        except Exception:
+            entry.insert("insert", prefix + suffix)
+            try:
+                cur = entry.index("insert")
+                entry.icursor(cur - len(suffix))
+            except Exception:
+                pass
+            entry.focus_set()
+
+    # 插入函数/结构（包裹并高亮）
     def _insert_sqrt(self):
-        self._insert_template("sqrt()", len("sqrt("))
+        self._insert_or_wrap_select("sqrt(", ")")
 
     def _insert_y_root(self):
-        self._insert_template("root( , )", len("root("))
+        # y√x: root(deg, val)
+        entry = self.expr_entry
+        try:
+            if entry.selection_present():
+                start = entry.index("sel.first")
+                end = entry.index("sel.last")
+                content = entry.get()
+                selected = content[start:end]
+                entry.delete(start, end)
+                pos = start
+                text = f"root(n, {selected})"
+                entry.insert(pos, text)
+                sel_start = pos + len("root(")
+                sel_end = sel_start + 1
+                try:
+                    entry.selection_range(sel_start, sel_end)
+                except Exception:
+                    entry.icursor(sel_start)
+                entry.focus_set()
+            else:
+                pos = entry.index("insert")
+                entry.insert(pos, "root(, )")
+                sel_start = pos + len("root(")
+                sel_end = sel_start + 1
+                try:
+                    entry.selection_range(sel_start, sel_end)
+                except Exception:
+                    entry.icursor(sel_start)
+                entry.focus_set()
+        except Exception:
+            pos = entry.index("insert")
+            entry.insert(pos, "root(, )")
+            sel_start = pos + len("root(")
+            sel_end = sel_start + 1
+            try:
+                entry.selection_range(sel_start, sel_end)
+            except Exception:
+                entry.icursor(sel_start)
+            entry.focus_set()
 
     def _insert_factorial(self):
-        self._insert_template("fact()", len("fact("))
+        self._insert_or_wrap_select("fact(", ")")
 
     def _insert_abs(self):
-        self._insert_template("abs()", len("abs("))
+        self._insert_or_wrap_select("abs(", ")")
 
     def _insert_arcsin(self):
-        self._insert_template("asin()", len("asin("))
+        self._insert_or_wrap_select("asin(", ")")
 
     def _insert_arccos(self):
-        self._insert_template("acos()", len("acos("))
+        self._insert_or_wrap_select("acos(", ")")
 
     def _insert_arctan(self):
-        self._insert_template("atan()", len("atan("))
+        self._insert_or_wrap_select("atan(", ")")
+
+    def _insert_sin(self):
+        self._insert_or_wrap_select("sin(", ")")
+
+    def _insert_cos(self):
+        self._insert_or_wrap_select("cos(", ")")
+
+    def _insert_tan(self):
+        self._insert_or_wrap_select("tan(", ")")
+
+    def _insert_ln(self):
+        self._insert_or_wrap_select("ln(", ")")
+
+    def _insert_log10(self):
+        self._insert_or_wrap_select("log10(", ")")
+
+    def _insert_reciprocal(self):
+        self._insert_or_wrap_select("1/(", ")")
+
+    def _insert_pow2(self):
+        # (base)^2，选中 base
+        self._insert_or_wrap_select("(", ")^2")
+
+    def _insert_pow3(self):
+        # (base)^3，选中 base
+        self._insert_or_wrap_select("(", ")^3")
+
+    def _insert_ten_power(self):
+        # 插入 "*10^()" 并高亮括号内
+        self._insert_or_wrap_select("*10^(", ")", "x")
 
     def _insert_ans_value(self):
         value = self.evaluator.last_result
@@ -363,44 +463,6 @@ class CalculatorPage(ctk.CTkFrame):
         if not text:
             text = "0"
         self.insert_text(text)
-
-    def _ten_power(self):
-        parent = self.winfo_toplevel()
-        initial = self._ten_power_last or ""
-        while True:
-            exp_text = simpledialog.askstring("10^x", "输入指数 x:", initialvalue=initial, parent=parent)
-            if exp_text is None:
-                return
-            exp_text = exp_text.strip()
-            if not exp_text:
-                messagebox.showerror("10^x", "指数不能为空", parent=parent)
-                continue
-            try:
-                exponent = self._eval_numeric(exp_text, {})
-            except Exception as exc:
-                messagebox.showerror("10^x", f"指数无效: {exc}", parent=parent)
-                continue
-            break
-        try:
-            result = 10.0 ** exponent
-        except Exception as exc:
-            messagebox.showerror("10^x", f"计算失败: {exc}", parent=parent)
-            return
-        if not math.isfinite(result):
-            messagebox.showerror("10^x", "结果不是有限数", parent=parent)
-            return
-        formatted = self._format_result(result)
-        expr_display = f"10^({exp_text})"
-        self.expr_var.set(expr_display)
-        self.result_var.set(formatted)
-        self.mode_lbl.configure(text=("D" if self.evaluator.deg_mode else "R"))
-        self._add_history(expr_display, formatted)
-        self._ten_power_last = exp_text
-        try:
-            self.evaluator.last_result = float(result)
-        except Exception:
-            pass
-        play_sound("assets/cat.mp3")
 
     def _power_prompt(self):
         parent = self.winfo_toplevel()
@@ -800,7 +862,7 @@ class CalculatorPage(ctk.CTkFrame):
         self.result_var.set(formatted)
         self.mode_lbl.configure(text=("D" if self.evaluator.deg_mode else "R"))
 
-        hist_expr = f"Σ {var_name}={lower_int}..{upper_int} of {expr_text}"
+        hist_expr = f"Σ {var_name} of {expr_text}"
         self._add_history(hist_expr, formatted)
 
         self._sigma_last_args = {"var": var_name, "lower": lower_expr, "upper": upper_expr, "expr": expr_text}
@@ -1124,7 +1186,7 @@ class CalculatorPage(ctk.CTkFrame):
             self._add_history(expr, formatted)
 
             play_sound("assets/cat.mp3")
-            
+
         except Exception as e:
             self.result_var.set(f"Error: {e}")
 
@@ -1217,3 +1279,5 @@ class CalculatorPage(ctk.CTkFrame):
             self._style_op_button(b, kind=kind)
 
         self._sync_mute_btn()
+
+
