@@ -13,6 +13,7 @@ from .dialogs import show_cat_bubble
 from .sound_player import toggle_muted, is_muted
 from tkinter import simpledialog, messagebox
 
+from PIL import Image, ImageDraw
 
 class CalculatorPage(ctk.CTkFrame):
     def __init__(self, master, evaluator: SafeEvaluator, palette, theme_name):
@@ -38,11 +39,29 @@ class CalculatorPage(ctk.CTkFrame):
         self._derivative_last_var = "x"
         self._build()
 
-    # ---- Calculator (ClassWiz-like) -----------------------------------------
+    def _make_circle_x_image(self, diameter, color_hex):#没招了，gpt的法子：生成一张：圆为实心、X 为透明挖空 的 RGBA 图片
+        D = int(diameter)
+        pad = max(1, D // 12)# 圆与边缘留一点空隙，避免被裁切
+        thickness = max(2, D // 8)# X 的线宽，可按需要调整
+
+        # 做一张 alpha 掩膜：先画实心圆，再用 0 把 X 两条对角线擦掉
+        mask = Image.new("L", (D, D), 0)
+        m = ImageDraw.Draw(mask)
+        m.ellipse((pad, pad, D - pad - 1, D - pad - 1), fill=255)
+        m.line((pad, pad, D - pad - 1, D - pad - 1), fill=0, width=thickness)
+        m.line((pad, D - pad - 1, D - pad - 1, pad), fill=0, width=thickness)
+
+        # 用圆的颜色填充，并套上掩膜（X 区域 alpha=0 变透明）
+        base = Image.new("RGBA", (D, D), color_hex)
+        base.putalpha(mask)
+
+        return ctk.CTkImage(light_image=base, dark_image=base, size=(D, D))
+
+
     def _build(self):
         frame = self
 
-        self.device = ctk.CTkFrame(frame, corner_radius=24)
+        self.device = ctk.CTkScrollableFrame(frame, corner_radius=24)
         self.device.pack(fill="both", expand=True, padx=40, pady=20)
 
         brand = ctk.CTkFrame(self.device, fg_color="transparent")
@@ -64,7 +83,7 @@ class CalculatorPage(ctk.CTkFrame):
 
         self._mute_btn = ctk.CTkButton(
             right_row,
-            text=("有声" if is_muted() else "无声"),
+            text=("切换成有声" if is_muted() else "切换成无声"),
             width=54,
             command=self._toggle_mute,
         )
@@ -92,12 +111,59 @@ class CalculatorPage(ctk.CTkFrame):
         self.mode_lbl = ctk.CTkLabel(scr_row, text=("D" if self.evaluator.deg_mode else "R"), font=("SF Pro Text", 14))
         self.mode_lbl.pack(side="right", padx=(6, 0))
 
+        self.mode_lbl.bind("<Button-1>", lambda e: self._toggle_drg())#DR标签可点击切换角度/弧度
+        self.mode_lbl.configure(cursor="hand2")
+
         self.result_var = tk.StringVar(value="0")
         self.res_lbl = ctk.CTkLabel(screen, textvariable=self.result_var, anchor="e", font=("Consolas", 28))
         self.res_lbl.pack(fill="x", padx=10, pady=(0, 8))
 
+
+
         func_area = ctk.CTkFrame(self.device, corner_radius=14)
         func_area.pack(fill="x", padx=20, pady=(0, 8))
+
+        ind_row = ctk.CTkFrame(func_area, fg_color="transparent")
+        ind_row.pack(fill="x", padx=6, pady=(6, 0))
+
+        self._circle_labels = []
+        self._circle_middle_lbl = None
+        self._circle_middle_img = None
+        self._circle_middle_d = None
+
+        circle_sizes = [42, 42, 62, 42, 42]
+
+        for c in range(5):
+            ind_row.grid_columnconfigure(c, weight=1, uniform="ind")
+
+        ind_row.grid_rowconfigure(0, weight=1)
+        for c, size in enumerate(circle_sizes):
+            if c == 2:
+                # 中间这一颗用图片（圆+X 挖空）
+                D = int(size)  # 直径大致按原来的字号来
+                color = self._palette.get("subtext", "#6C6C70")
+                img = self._make_circle_x_image(D, color)
+
+                lbl = ctk.CTkLabel(ind_row, text="", image=img)
+                lbl.grid(row=0, column=c, padx=4, pady=(0, 8), sticky="n")
+                lbl.configure(cursor="hand2")
+                lbl.bind("<Button-1>", lambda e: self.insert_text("x"))
+
+                self._circle_middle_lbl = lbl
+                self._circle_middle_img = img
+                self._circle_middle_d = D
+
+                self._circle_labels.append(lbl)
+            else:
+                ch = "●"
+                lbl = ctk.CTkLabel(
+                    ind_row,
+                    text=ch,
+                    font=("SF Pro Text", size),
+                    text_color=self._palette.get("subtext", "#6C6C70"),
+                )
+                lbl.grid(row=0, column=c, padx=4, pady=(0, 8), sticky="n")
+                self._circle_labels.append(lbl)
 
         funcs = [
             [
@@ -106,7 +172,7 @@ class CalculatorPage(ctk.CTkFrame):
                 ("x!", self._insert_factorial, "func_call", True),
                 ("x^3", self._insert_pow3, "func_call", True),
                 ("x^2", self._insert_pow2, "func_call", True),
-                ("DRG", self._toggle_drg, "func_call", True),
+                #("DRG", self._toggle_drg, "func_call", True),
             ],
             [
                 ("sqrt", self._insert_sqrt, "func_call", True),
@@ -138,16 +204,29 @@ class CalculatorPage(ctk.CTkFrame):
             ],
         ]
 
+        FUNC_BTN_HEIGHT =30
+
         for row in funcs:
             rf = ctk.CTkFrame(func_area, fg_color="transparent")
             rf.pack(fill="x", padx=6, pady=4)
-            for text, action, kind, enabled in row:
+
+            for c in range(len(row)):
+                rf.grid_columnconfigure(c, weight=1, uniform="funcs")
+
+            for c, (text, action, kind, enabled) in enumerate(row):
                 if kind == "func_call":
                     cmd = action if enabled else None
                 else:
                     cmd = (lambda s=action: self.insert_text(s)) if (enabled and isinstance(action, str)) else None
-                b = ctk.CTkButton(rf, text=text, height=36, width=72, corner_radius=10, command=cmd)
-                b.pack(side="left", padx=4)
+
+                b = ctk.CTkButton(
+                    rf,
+                    text=text,
+                    height=FUNC_BTN_HEIGHT,
+                    corner_radius=10,
+                    command=cmd
+                )
+                b.grid(row=0, column=c, padx=4, sticky="ew")
                 self._style_func_button(b, kind="func" if enabled else "ghost", enabled=enabled)
                 self._func_buttons.append((b, "func" if enabled else "ghost", enabled))
 
@@ -1242,7 +1321,7 @@ class CalculatorPage(ctk.CTkFrame):
 
     def _sync_mute_btn(self):
         try:
-            self._mute_btn.configure(text=("有声" if is_muted() else "无声"))
+            self._mute_btn.configure(text=("切换成有声" if is_muted() else "切换成无声"))
         except Exception:
             pass
 
@@ -1278,6 +1357,25 @@ class CalculatorPage(ctk.CTkFrame):
         for b, kind in self._op_buttons:
             self._style_op_button(b, kind=kind)
 
+        for lbl in getattr(self, "_circle_labels", []):
+            try:
+                lbl.configure(text_color=pal.get("subtext", "#6C6C70"))
+            except Exception:
+                pass
+
+        try:
+            if getattr(self, "_circle_middle_lbl", None) and self._circle_middle_d:
+                color = pal.get("subtext", "#6C6C70")
+                img = self._make_circle_x_image(self._circle_middle_d, color)
+                self._circle_middle_lbl.configure(image=img, text="")
+                self._circle_middle_img = img
+        except Exception:
+            pass
         self._sync_mute_btn()
+
+
+
+        self._sync_mute_btn()
+
 
 
