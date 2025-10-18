@@ -644,9 +644,9 @@ class PetCaloriePage(ctk.CTkFrame):
     def _sync_mute_btn(self):
         try:
             if is_muted():
-                self._mute_btn.configure(text="有声")
+                self._mute_btn.configure(text="切换成有声")
             else:
-                self._mute_btn.configure(text="无声")
+                self._mute_btn.configure(text="切换成无声")
         except Exception:
             pass
 
@@ -1598,6 +1598,7 @@ class PetCaloriePage(ctk.CTkFrame):
         except Exception:
             pass
         self._sync_mute_btn()
+
 
 
 
