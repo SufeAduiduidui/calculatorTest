@@ -40,6 +40,8 @@ class PetCaloriePage(ctk.CTkFrame):
         self._angry_overlay_win = None#gif使用的全局遮罩层窗口
         self._angry_zoom_parent = None#遮罩层
 
+        self._howto_stage_path = "assets/howtojudge.jpeg"#怎么判断猫儿体格图片
+
         self._CAT_DER_RANGE = {
             "发育期": (2.0, 2.5),
             "未结扎": (1.4, 1.6),
@@ -366,6 +368,8 @@ class PetCaloriePage(ctk.CTkFrame):
         self._catalog = self._build_catalog() #根据 _BRANDS构建嵌套目录：{分类: {品牌: {产品: kcal/100g}}}
         self._started = False #是否点击开始计算
 
+        self._calc_ok = False #_update_preview是否成功产出
+
         self._build()
         self.apply_theme(self._palette, self._theme_name)
 
@@ -456,6 +460,14 @@ class PetCaloriePage(ctk.CTkFrame):
                                             command=self._on_stage_change,
                                             variable=self.stage_var)
         self.stage_menu.pack(side="left")
+
+        ctk.CTkButton(
+            s_row,
+            text="如何判断您家猫儿是什么状态",
+            command=self._open_stage_help,
+            width=220
+        ).pack(side="right", padx=(8, 0))
+
         self.stage_tip = ctk.CTkLabel(s_row, text="")
         self.stage_tip.pack(side="right")
 
@@ -900,11 +912,21 @@ class PetCaloriePage(ctk.CTkFrame):
             total_ratio += ratio
 
         if not items or len(items) < 2:
+            if getattr(self, "_started", False):
+                try:
+                    play_sound("assets/xp_wrong.mp3")
+                except Exception:
+                    pass
             return None, "提示：请至少选择两种以上且填写比例（%）"
 
-        # 检查比例加和是否为100%
-        if abs(total_ratio - 100.0) > 1:#允许少量误差
-            return None, "加和要=100%"
+        if abs(total_ratio - 100.0) > 1:#检查比例加和是否为100%，允许少量误差
+            if getattr(self, "_started", False):
+                try:
+                    play_sound("assets/xp_wrong.mp3")
+                    return None, "加和要=100%"
+                except Exception:
+                    pass
+
         weighted = sum(r * k for (r, k, _, _, _) in items) / total_ratio
         for ratio, kcal, cat, brand, prod in items:
             detail_lines.append(f"- {cat} / {brand} / {prod}：{kcal:.1f} kcal/100g，比例 {ratio:g}%")
@@ -912,6 +934,7 @@ class PetCaloriePage(ctk.CTkFrame):
         return weighted, detail_text
 
     def _update_preview(self):
+        self._calc_ok = False
         _, _, der = self._calc_rer_der()
         if der is None:
             self.result_var.set("每日建议：- g（- kcal）")
@@ -941,24 +964,25 @@ class PetCaloriePage(ctk.CTkFrame):
 
         grams = der * 100.0 / kcal_100g
         self.result_var.set(f"每日建议：{grams:.0f} g（{der:.0f} kcal）")
+        self._calc_ok = True
 
     def _on_start_press(self):
         if self._parse_weight() is None:#先校验体重；缺失则在结果区提示并保持未开始
             self._started = False
             self.result_var.set("请输入你的猫儿或狗儿的体重～")
             try:
-                play_sound("assets/cat.mp3")
+                play_sound("assets/xp_wrong.mp3") #错误提示音
             except Exception:
                 pass
             return
 
-
-        self._started = True#标记已开始，然后计算并出结果
+        self._started = True
         self._update_preview()
-        try:
-            play_sound("assets/cat.mp3")
-        except Exception:
-            pass
+        if self._calc_ok:  # 仅成功时播放
+            try:
+                play_sound("assets/cat.mp3")
+            except Exception:
+                pass
 
 
     # 布局
@@ -1026,6 +1050,62 @@ class PetCaloriePage(ctk.CTkFrame):
             play_sound("assets/cat.mp3")
         except Exception:
             pass
+
+    def _open_stage_help(self):
+        pal = self._palette or {}
+        path = getattr(self, "_howto_stage_path", "assets/howtojudge.jpeg")
+
+        modal = ctk.CTkToplevel(self)
+        modal.title("如何判断猫咪状态")
+        modal.resizable(True, True)
+        modal.configure(fg_color=pal.get("surface", "#FFFFFF"))
+        try:
+            modal.transient(self.winfo_toplevel())
+            modal.grab_set()
+        except Exception:
+            pass
+
+        container = ctk.CTkFrame(modal, fg_color=pal.get("surface", "#FFFFFF"), corner_radius=16)
+        container.pack(fill="both", expand=True, padx=24, pady=20)
+
+        # 加载图片
+        try:
+            img = Image.open(path)
+        except Exception:
+            ctk.CTkLabel(container, text="未找到图片：assets/howtojudge.jpeg").pack(padx=12, pady=12)
+            return
+
+        # 计算初始显示尺寸（保持等比，限制最大窗口内）
+        modal.update_idletasks()
+        max_w, max_h = 820, 980  # 初始最大显示区域，可按需调
+        iw, ih = img.size
+        scale = min(max_w / iw, max_h / ih, 1.0)
+        disp_w, disp_h = max(1, int(iw * scale)), max(1, int(ih * scale))
+
+        # 生成 CTkImage（做一次版本兼容）
+        try:
+            ctk_img = ctk.CTkImage(img, size=(disp_w, disp_h))
+        except TypeError:
+            ctk_img = ctk.CTkImage(light_image=img, size=(disp_w, disp_h))
+
+        # 挂到 label 上；保存引用避免被回收
+        lbl = ctk.CTkLabel(container, image=ctk_img, text="")
+        lbl._ctk_img_ref = ctk_img
+        lbl.pack(padx=6, pady=6)
+
+        # 居中窗口
+        try:
+            parent = self.winfo_toplevel()
+            px, py = parent.winfo_rootx(), parent.winfo_rooty()
+            pw, ph = parent.winfo_width(), parent.winfo_height()
+        except Exception:
+            px = py = 100
+            pw = ph = 800
+        mw = max(disp_w + 48, 420)
+        mh = max(disp_h + 96, 320)
+        x = px + (pw - mw) // 2
+        y = py + (ph - mh) // 2
+        modal.geometry(f"{mw}x{mh}+{int(x)}+{int(y)}")
 
     def on_show(self):
         try:
@@ -1490,6 +1570,10 @@ class PetCaloriePage(ctk.CTkFrame):
             )
         except Exception:
             pass
+
+
+
+
 
 
 
