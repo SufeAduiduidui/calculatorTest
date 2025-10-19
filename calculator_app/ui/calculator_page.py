@@ -1125,7 +1125,7 @@ class CalculatorPage(ctk.CTkFrame):
             if params is None:
                 return
 
-        tol_f = 1e-9
+        tol_f = 1e-12
         tol_x = 1e-9
 
         def func(value):
@@ -1217,7 +1217,21 @@ class CalculatorPage(ctk.CTkFrame):
                     x_left, f_left = mid, fm
             return 0.5 * (x_left + x_right)
 
-        root = None
+        def normalize_root_value(value):
+            if not isinstance(value, (int, float)):
+                return value
+            if not math.isfinite(value):
+                return value
+            nearest = round(value)
+            if nearest == 0:
+                zero_tol = max(1e-7, tol_x * 1e3)
+                if math.isclose(value, 0.0, abs_tol=zero_tol):
+                    return 0.0
+            if math.isclose(value, nearest, rel_tol=1e-9, abs_tol=1e-5):
+                return float(nearest)
+            return float(value)
+
+        roots = []
         candidates = self._generate_initial_guesses()
         for guess in candidates:
             candidate_root = try_newton(guess)
@@ -1231,41 +1245,86 @@ class CalculatorPage(ctk.CTkFrame):
                             candidate_root = bisect(*bracket)
                         except Exception:
                             candidate_root = None
-            if candidate_root is not None and math.isfinite(candidate_root):
-                root = candidate_root
+            if candidate_root is None or not math.isfinite(candidate_root):
+                continue
+            if any(math.isclose(candidate_root, existing[0], rel_tol=1e-9, abs_tol=1e-6) for existing in roots):
+                continue
+            try:
+                residual = func(candidate_root)
+            except Exception:
+                continue
+            if not math.isfinite(residual) or abs(residual) > tol_f * 10:
+                continue
+            roots.append((float(candidate_root), abs(residual)))
+            if len(roots) >= 8:
                 break
 
-        if root is None:
+        if not roots:
             messagebox.showerror("SOLVE", "未找到解，请调整表达式或参数", parent=self.winfo_toplevel())
             return
 
-        if root is None or not math.isfinite(root):
+        roots.sort(key=lambda item: item[0])
+        cluster_abs_tol = max(5e-5, tol_x * 5e4)
+        cluster_rel_tol = 1e-8
+        merged_roots = []
+        for value, res_abs in roots:
+            if merged_roots:
+                prev_value, prev_res = merged_roots[-1]
+                diff = abs(value - prev_value)
+                scale = max(abs(value), abs(prev_value), 1.0)
+                same_sign = (
+                    (value == 0.0 and prev_value == 0.0)
+                    or (value > 0 and prev_value > 0)
+                    or (value < 0 and prev_value < 0)
+                )
+                if same_sign and (diff <= cluster_abs_tol or diff <= scale * cluster_rel_tol):
+                    if res_abs < prev_res:
+                        merged_roots[-1] = (value, res_abs)
+                    continue
+            merged_roots.append((value, res_abs))
+
+        snapped_roots = []
+        for value, _ in merged_roots:
+            snapped = normalize_root_value(value)
+            if not isinstance(snapped, (int, float)):
+                continue
+            if not math.isfinite(snapped):
+                continue
+            if any(math.isclose(snapped, existing, rel_tol=1e-9, abs_tol=1e-9) for existing in snapped_roots):
+                continue
+            snapped_roots.append(float(snapped))
+
+        if not snapped_roots:
             messagebox.showerror("SOLVE", "求解失败，请调整表达式或参数", parent=self.winfo_toplevel())
             return
 
-        try:
-            residual = func(root)
-        except Exception:
-            residual = float("inf")
+        snapped_roots.sort()
 
-        if not math.isfinite(residual):
-            messagebox.showerror("SOLVE", "求解结果不收敛，请调整表达式或参数", parent=self.winfo_toplevel())
-            return
+        formatted_roots = []
+        for value in snapped_roots:
+            try:
+                residual = func(value)
+            except Exception:
+                residual = float("inf")
+            if not math.isfinite(residual) or abs(residual) > tol_f * 10:
+                messagebox.showerror("SOLVE", "求解结果不收敛，请调整表达式或参数", parent=self.winfo_toplevel())
+                return
+            formatted_roots.append(self._format_result(value))
 
-        formatted = self._format_result(root)
-        self.result_var.set(formatted)
+        result_text = " / ".join(formatted_roots)
+        self.result_var.set(result_text)
         self.mode_lbl.configure(text=("D" if self.evaluator.deg_mode else "R"))
 
         param_desc = ", ".join(f"{name}={self._format_result(params[name])}" for name in param_names)
         hist_expr = f"SOLVE {expr}"
         if param_desc:
             hist_expr += f" | {param_desc}"
-        self._add_history(hist_expr, f"{target} = {formatted}")
+        self._add_history(hist_expr, f"{target} = {result_text}")
 
-        self._solve_last_guess = root
+        self._solve_last_guess = snapped_roots[0]
         self._solve_last_params = dict(params)
         self._solve_last_var = target
-        self.evaluator.last_result = float(root)
+        self.evaluator.last_result = float(snapped_roots[0])
 
         play_sound("assets/cat.mp3")
 
