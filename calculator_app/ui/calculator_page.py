@@ -139,7 +139,7 @@ class CalculatorPage(ctk.CTkFrame):
         ind_row.grid_rowconfigure(0, weight=1)
         for c, size in enumerate(circle_sizes):
             if c == 2:
-                # 中间这一颗用图片（圆+X 挖空）
+                #中间的用图片（圆+X 挖空）
                 D = int(size)  # 直径大致按原来的字号来
                 color = self._palette.get("subtext", "#6C6C70")
                 img = self._make_circle_x_image(D, color)
@@ -163,6 +163,12 @@ class CalculatorPage(ctk.CTkFrame):
                     text_color=self._palette.get("subtext", "#6C6C70"),
                 )
                 lbl.grid(row=0, column=c, padx=4, pady=(0, 8), sticky="n")
+                if c == 1:#第2个圆光标左移
+                    lbl.configure(cursor="hand2")
+                    lbl.bind("<Button-1>", self._move_cursor_left)
+                elif c == 3:#第4个圆光标右移
+                    lbl.configure(cursor="hand2")
+                    lbl.bind("<Button-1>", self._move_cursor_right)
                 self._circle_labels.append(lbl)
 
         funcs = [
@@ -183,7 +189,7 @@ class CalculatorPage(ctk.CTkFrame):
             ],
             [
                 ("Σ", self._sigma_sum, "func_call", True),
-                ("\u03C0", "pi", "func", True),
+                ("\u03C0", "\u03C0", "func", True),
                 ("e", "e", "func", True),
                 ("sin", self._insert_sin, "func_call", True),
                 ("cos", self._insert_cos, "func_call", True),
@@ -349,7 +355,30 @@ class CalculatorPage(ctk.CTkFrame):
         )
         self._pet_hint_shown = True
 
-    # ---- Styles/helpers ------------------------------------------------------
+    def _move_cursor_left(self, event=None): #光标左移
+
+        entry = self.expr_entry
+        entry.focus_set()
+        try:
+            pos = entry.index("sel.first") if entry.selection_present() else entry.index("insert")
+        except:
+            pos = entry.index("insert")
+        if pos > 0:
+            entry.icursor(pos - 1)
+
+    def _move_cursor_right(self, event=None):#光标右移
+        entry = self.expr_entry
+        entry.focus_set()
+        s = entry.get()
+        try:
+            pos = entry.index("sel.last") if entry.selection_present() else entry.index("insert")
+        except:
+            pos = entry.index("insert")
+            if pos < len(s):
+                entry.icursor(pos + 1)
+
+
+                    # ---- Styles/helpers ------------------------------------------------------
     def _style_func_button(self, b, kind, enabled=True):
         pal = self._palette
         if not enabled or kind == "ghost":
@@ -429,7 +458,7 @@ class CalculatorPage(ctk.CTkFrame):
             sel_start = pos + len(prefix)
             sel_end = sel_start + len(inside)
             try:
-                entry.selection_range(sel_start, sel_end)  # 高亮括号内
+                entry.selection_range(sel_start, sel_end) #高亮括号内
             except Exception:
                 entry.icursor(sel_start)
             entry.focus_set()
@@ -1375,7 +1404,10 @@ class CalculatorPage(ctk.CTkFrame):
 
 
 
-        self._sync_mute_btn()
+
+
+
+
 
 
 
