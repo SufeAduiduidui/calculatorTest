@@ -1,11 +1,72 @@
 import ast
 import math
+import re
 
 
 class SafeEvaluator:
     def __init__(self, deg_mode=False):
         self.deg_mode = deg_mode
         self.last_result = 0.0
+
+
+    def _insert_implicit_multiplication(self, expr, variables=None):
+        # 基于简单分词的隐式乘法插入：在 [num|id|')'] 与 [num|id|'('] 相邻处加 '*'
+        allowed = self._allowed_names(variables)
+        func_names = {name for name, obj in allowed.items() if callable(obj)}
+
+        token_re = re.compile(r"""
+            \s*(
+                 (?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+\-]?\d+)?   # number, 支持科学计数
+               | [A-Za-z_]\w*                                 # identifier
+               | \*\* | // | [+\-*/%^(),]                     #运算符/括号/逗号
+            )
+        """, re.X)
+
+        tokens = []
+        pos = 0
+        L = len(expr)
+        while pos < L:
+            m = token_re.match(expr, pos)
+            if not m:
+                tok = expr[pos]
+                pos += 1
+            else:
+                tok = m.group(1)
+                pos = m.end()
+
+            if tok.isidentifier():
+                ttype = "id"
+            elif tok[:1].isdigit() or (tok.startswith(".") and len(tok) > 1 and tok[1].isdigit()):
+                ttype = "num"
+            elif tok == "(":
+                ttype = "lparen"
+            elif tok == ")":
+                ttype = "rparen"
+            elif tok == ",":
+                ttype = "comma"
+            else:
+                ttype = "op"
+            tokens.append((ttype, tok))
+
+        def is_value_left(t):
+            return t[0] in ("num", "id", "rparen")
+
+        def is_value_right(t):
+            return t[0] in ("num", "id", "lparen")
+
+        out = []
+        for i, t in enumerate(tokens):
+            out.append(t[1])
+            if i + 1 >= len(tokens):
+                continue
+            a = t
+            b = tokens[i + 1]
+            if a[0] == "id" and b[0] == "lparen" and a[1] in func_names:
+                continue
+            if is_value_left(a) and is_value_right(b):
+                out.append("*")
+
+        return "".join(out)
 
     def _make_trig(self):
         deg = self.deg_mode
@@ -113,7 +174,7 @@ class SafeEvaluator:
             allowed.update(extra_vars)
         return allowed
 
-    def _preprocess(self, expr):
+    def _preprocess(self, expr, variables=None):
         if not isinstance(expr, str):
             raise ValueError("Expression must be a string")
         expr = expr.replace("^", "**")
@@ -134,10 +195,13 @@ class SafeEvaluator:
         }
         for key, value in replacements.items():
             expr = expr.replace(key, value)
+
+        expr = self._insert_implicit_multiplication(expr, variables)#插入隐式乘法
+
         return expr
 
     def evaluate(self, expr, variables=None):
-        expr = self._preprocess(expr)
+        expr = self._preprocess(expr, variables)
         try:
             node = ast.parse(expr, mode="eval")
         except Exception as exc:
