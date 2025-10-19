@@ -67,19 +67,22 @@ class CalculatorPage(ctk.CTkFrame):
         brand = ctk.CTkFrame(self.device, fg_color="transparent")
         brand.pack(side="top", fill="x", padx=20, pady=(18, 6))
 
-        left = ctk.CTkFrame(brand, fg_color="transparent")
-        left.pack(side="left", fill="both", expand=True)
-
+        
         right = ctk.CTkFrame(brand, fg_color="transparent")
         right.pack(side="right")
 
         right_row = ctk.CTkFrame(right, fg_color="transparent")
         right_row.pack()
 
-        self.lbl_brand = ctk.CTkLabel(left, text="CASIO", font=("SF Pro Display", 18, "bold"))
-        self.lbl_sub = ctk.CTkLabel(left, text="CLASSWIZ", font=("SF Pro Text", 12))
-        self.lbl_brand.pack()
-        self.lbl_sub.pack()
+
+        center = ctk.CTkFrame(brand, fg_color="transparent") #place精确水平居中
+        center.place(relx=0.5, rely=0.0, anchor="n")
+
+        self.lbl_brand = ctk.CTkLabel(center, text="CASIO", font=("SF Pro Display", 18, "bold"))
+        self.lbl_sub = ctk.CTkLabel(center, text="CLASSWIZ", font=("SF Pro Text", 12))
+        self.lbl_brand.pack(anchor="center")
+        self.lbl_sub.pack(anchor="center")
+
 
         self._mute_btn = ctk.CTkButton(
             right_row,
@@ -1401,6 +1404,7 @@ class CalculatorPage(ctk.CTkFrame):
         except Exception:
             pass
         self._sync_mute_btn()
+
 
 
 
