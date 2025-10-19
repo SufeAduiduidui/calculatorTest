@@ -1,72 +1,13 @@
 import ast
+import io
 import math
-import re
+import tokenize
 
 
 class SafeEvaluator:
     def __init__(self, deg_mode=False):
         self.deg_mode = deg_mode
         self.last_result = 0.0
-
-
-    def _insert_implicit_multiplication(self, expr, variables=None):
-        # 基于简单分词的隐式乘法插入：在 [num|id|')'] 与 [num|id|'('] 相邻处加 '*'
-        allowed = self._allowed_names(variables)
-        func_names = {name for name, obj in allowed.items() if callable(obj)}
-
-        token_re = re.compile(r"""
-            \s*(
-                 (?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+\-]?\d+)?   # number, 支持科学计数
-               | [A-Za-z_]\w*                                 # identifier
-               | \*\* | // | [+\-*/%^(),]                     #运算符/括号/逗号
-            )
-        """, re.X)
-
-        tokens = []
-        pos = 0
-        L = len(expr)
-        while pos < L:
-            m = token_re.match(expr, pos)
-            if not m:
-                tok = expr[pos]
-                pos += 1
-            else:
-                tok = m.group(1)
-                pos = m.end()
-
-            if tok.isidentifier():
-                ttype = "id"
-            elif tok[:1].isdigit() or (tok.startswith(".") and len(tok) > 1 and tok[1].isdigit()):
-                ttype = "num"
-            elif tok == "(":
-                ttype = "lparen"
-            elif tok == ")":
-                ttype = "rparen"
-            elif tok == ",":
-                ttype = "comma"
-            else:
-                ttype = "op"
-            tokens.append((ttype, tok))
-
-        def is_value_left(t):
-            return t[0] in ("num", "id", "rparen")
-
-        def is_value_right(t):
-            return t[0] in ("num", "id", "lparen")
-
-        out = []
-        for i, t in enumerate(tokens):
-            out.append(t[1])
-            if i + 1 >= len(tokens):
-                continue
-            a = t
-            b = tokens[i + 1]
-            if a[0] == "id" and b[0] == "lparen" and a[1] in func_names:
-                continue
-            if is_value_left(a) and is_value_right(b):
-                out.append("*")
-
-        return "".join(out)
 
     def _make_trig(self):
         deg = self.deg_mode
@@ -174,6 +115,56 @@ class SafeEvaluator:
             allowed.update(extra_vars)
         return allowed
 
+    def _needs_implicit_mul(self, prev_token, curr_token, func_names):
+        prev_type, prev_str = prev_token
+        curr_type, curr_str = curr_token
+
+        if prev_type == tokenize.OP and prev_str in {",", ":"}:
+            return False
+        if curr_type == tokenize.OP and curr_str in {",", ":"}:
+            return False
+
+        left_ok = False
+        if prev_type in (tokenize.NUMBER, tokenize.NAME):
+            left_ok = True
+        elif prev_type == tokenize.OP and prev_str in (")", "]", "}"):
+            left_ok = True
+
+        right_ok = False
+        if curr_type in (tokenize.NUMBER, tokenize.NAME):
+            right_ok = True
+        elif curr_type == tokenize.OP and curr_str in ("(", "[", "{"):
+            right_ok = True
+
+        if not (left_ok and right_ok):
+            return False
+
+        if curr_type == tokenize.OP and curr_str == "(" and prev_type == tokenize.NAME:
+            if prev_str in func_names:
+                return False
+        return True
+
+    def _insert_implicit_multiplication(self, expr, extra_vars=None):
+        reader = io.StringIO(expr).readline
+        tokens = tokenize.generate_tokens(reader)
+        allowed = self._allowed_names(extra_vars)
+        func_names = {name for name, value in allowed.items() if callable(value)}
+
+        parts = []
+        prev = None
+        for tok_type, tok_str, _, _, _ in tokens:
+            if tok_type == tokenize.ENDMARKER:
+                break
+            if tok_type in (tokenize.NL, tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT):
+                continue
+            current = (tok_type, tok_str)
+            if prev and self._needs_implicit_mul(prev, current, func_names):
+                parts.append("*")
+            if tok_type != tokenize.COMMENT:
+                parts.append(tok_str)
+                prev = current
+        return "".join(parts)
+
     def _preprocess(self, expr, variables=None):
         if not isinstance(expr, str):
             raise ValueError("Expression must be a string")
@@ -195,9 +186,7 @@ class SafeEvaluator:
         }
         for key, value in replacements.items():
             expr = expr.replace(key, value)
-
-        expr = self._insert_implicit_multiplication(expr, variables)#插入隐式乘法
-
+        expr = self._insert_implicit_multiplication(expr, variables)
         return expr
 
     def evaluate(self, expr, variables=None):
